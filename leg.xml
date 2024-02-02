@@ -55,7 +55,7 @@
       <!-- joints -->
       <!-- KNEE JOINT; MUST DEFINE AS FREE JOINT SO LEG FLOATS -->
       <default class="knee">
-        <joint type="free" pos="0 0 .02" range="-160 160"/>
+        <joint type="hinge" pos="0 0 .02" range="-160 160"/>
       </default>
       <!-- MAKE ALL ANKLE JOINTS HINGE JOINTS -->
       <joint type="hinge" damping=".2" stiffness="1" armature=".01" limited="true" solimplimit="0 .99 .01"/>
@@ -84,27 +84,39 @@
       <!-- LIGHT SETTING -->
       <light name="spotlight" mode="targetbodycom" target="shin_right" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30"/>
       
-      <!-- BODY FOR SHIN; CAN HAVE MAX 6-DOF -->
-      <body name="shin_right" pos="0 0 .475">
-        <joint name="knee_right" class="knee"/>
-        <geom name="le_shin" class="shin"/>
+      <!-- <body name = "plane_body" pos="0 0 1"> -->
+        <!-- <geom type="plane" size="10 0.1 10" rgba="0.5 0.5 0.5 1"/> -->
+        
+        <!-- BODY FOR SHIN; CAN HAVE MAX 6-DOF -->
+        <body name="shin_right" pos="0 0 .475">
+          <!-- <joint name="knee_right" class="knee"/> -->
+          <geom name="le_shin" class="shin"/>
 
-        <!-- BODY FOR FOOT; AGAIN I THINK MAX OF 6-DOF PER BODY? -->
-        <body name="le_foot" pos="0.05 0 -0.32">
-          <!-- add joints and geometries for left and right halves of foot -->
-          <!-- <joint name="ankle_x_right" class="ankle_x" axis="1 0 .5"/> -->
-          <joint name="ankle_y_right" class="ankle_y"/>
-          <!-- <geom name="foot1_right" class="foot1"/> -->
-          <geom name="foot1_right" class="foot2"/>
-        </body>
+          <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
+          <joint type="hinge" name="joint_hinge" axis="0 1 0"/>
+      
+          <!-- Create prismatic joints to constrain motion along the x and z directions -->
+          <joint type="slide" name="joint_slide_x" axis="1 0 0"/>
+          <joint type="slide" name="joint_slide_z" axis="0 0 1"/>
+    
+
+          <!-- BODY FOR FOOT; AGAIN I THINK MAX OF 6-DOF PER BODY? -->
+          <body name="le_foot" pos="0.05 0 -0.32">
+            <!-- add joints and geometries for left and right halves of foot -->
+            <!-- <joint name="ankle_x_right" class="ankle_x" axis="1 0 .5"/> -->
+            <joint name="ankle_y_right" class="ankle_y"/>
+            <!-- <geom name="foot1_right" class="foot1"/> -->
+            <geom name="foot1_right" class="foot2"/>
+          </body>
 
           <!-- <body name='big_toe' pos="0.1 0 -0.39">
             <joint name="toey_mctoe" type="hinge" range="-5 5"/>
             <geom name="mr_toe" type="sphere" size='0.025'/>
           </body> -->
 
-      </body>
-    <!-- END OF DEFINING THE LEG IN 3D SPACE -->
+        </body>
+      <!-- </body> -->
+      <!-- END OF DEFINING THE LEG IN 3D SPACE -->
 	</worldbody>
 	
     <!-- ACTUATORS FOR THE ANKLE JOINTS -->
