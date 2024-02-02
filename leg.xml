@@ -90,7 +90,7 @@
         <!-- BODY FOR SHIN; CAN HAVE MAX 6-DOF -->
         <body name="shin_right" pos="0 0 .475">
           <!-- <joint name="knee_right" class="knee"/> -->
-          <geom name="le_shin" class="shin"/>
+          <geom name="shin_geom" class="shin"/>
 
           <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
           <joint type="hinge" name="joint_hinge" axis="0 1 0"/>
@@ -133,7 +133,7 @@
     <!-- SENSORS FOR THE ANKLE JOINTS -->
 	<sensor>
       <jointpos joint="ankle_y_right" noise="0.1"/>
-      <jointvel joint="ankle_y_right" noise ="1"/>
+      <jointvel joint="ankle_y_right" noise ="0.1"/>
       <!-- <jointpos joint="ankle_x_right" noise="0.1"/>
       <jointvel joint="ankle_x_right" noise ="1"/> -->
 	</sensor>
