@@ -1,0 +1,15 @@
+Mon Jan 22 11:36:18 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 1. The simulation is unstable. Time = 0.1060.
+
+Mon Jan 22 11:36:37 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0540.
+
+Thu Jan 25 12:20:38 2024
+ERROR: Python exception raised
+
+Thu Jan 25 12:21:08 2024
+ERROR: Python exception raised
+
+Thu Jan 25 14:52:53 2024
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.3240.
+
