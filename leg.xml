@@ -124,15 +124,13 @@
       <!-- <motor joint="ankle_x_right" name="ankle_actuator_x" gear="20"/>
       <position name="position_servo_x_right" joint="ankle_x_right" kp="10"/>
 	    <velocity name="velocity_servo_x_right" joint="ankle_x_right" kv="0"/> -->
-
-      <motor joint="ankle_y_right" name="ankle_actuator_y" gear="20"/>
-      <position name="position_servo_y_right" joint="ankle_y_right" kp="10"/>
-	    <velocity name="velocity_servo_y_right" joint="ankle_y_right" kv="0"/>
+      <motor joint="ankle_y_right" name="ankle_actuator_y" gear="100"/>
 	</actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->
 	<sensor>
-      <jointpos joint="ankle_y_right" noise="0.1"/>
+      <jointpos joint='joint_hinge'/>
+      <jointpos joint="ankle_y_right" />
       <jointvel joint="ankle_y_right" noise ="0.1"/>
       <!-- <jointpos joint="ankle_x_right" noise="0.1"/>
       <jointvel joint="ankle_x_right" noise ="1"/> -->

@@ -10,9 +10,11 @@ import threading
 import time
 from queue import Queue
 import xml.etree.ElementTree as ET
+import imageio
 
 xml_path = 'leg.xml'
 simend = 10
+K_p = 0
 
 def generate_large_impulse(perturbation_queue):
     while True:
@@ -38,14 +40,19 @@ def controller(model, data):
     """
 
     if actuator_type == "torque":
-        model.actuator_gainprm[1, 0] = 1
+        # model.actuator_gainprm[1, 0] = 1
         # print(model.actuator_gainprm)
-        model.actuator_gainprm[0, 0] = 1
+        # model.actuator_gainprm[0, 0] = 1 
         # print(str(data.sensordata[0]) + ", " + str(data.sensordata[1]))
         # print()
-        data.ctrl[0] = -0.5 * \
-            (data.sensordata[0] - 0.0) - \
-            1 * (data.sensordata[1] - 0.0)
+
+        # GRAVITY COMPENSATION #
+        data.ctrl[0] = K_p * \
+            (data.sensordata[0] - 0)
+        # print(data.ctrl[0])
+        # data.ctrl[0] = -0.5 * \
+        #     (data.sensordata[0] - 0.0) - \
+        #     1 * (data.sensordata[1] - 0.0)
         # print(model.actuator_gainprm)
         # pass
         
@@ -78,7 +85,7 @@ def controller(model, data):
     # Apply the body COM pertubations in Cartersian Space
         
     # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-    data.xfrc_applied[1] = [-x_perturbation, 0, 0, 0., 0., 0.]
+    data.xfrc_applied[1] = [0, 0, 0, 0., 0., 0.]
 
     # Apply joint perturbations in Joint Space
     # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
@@ -200,10 +207,10 @@ context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 # glfw.set_scroll_callback(window, scroll)
 
 #set initial conditions
-data.qpos[0]=np.pi/8
+data.qpos[0]=0
 # data.qpos[1]=0
 # data.qpos[2]=-np.pi/6
-data.qpos[3]=-np.pi/6
+# data.qpos[3]=-np.pi/6
 # print(data.qpos)
 # Set camera configuration
 cam.azimuth = 90.0
@@ -228,6 +235,12 @@ perturbation_thread = threading.Thread \
      args=(perturbation_queue,) )
 perturbation_thread.start()
 
+
+# Define the video file parameters
+# video_file = 'output_video.mp4'
+# video_fps = 60  # Frames per second
+# frames = [] # list to store frames
+
 while not glfw.window_should_close(window):
     simstart = data.time
 
@@ -248,10 +261,22 @@ while not glfw.window_should_close(window):
                        mj.mjtCatBit.mjCAT_ALL.value, scene)
     mj.mjr_render(viewport, scene, context)
 
+    # # Capture the frame
+    # mj.mjr_readPixels(rgb=np.array([0,0,0]),depth=np.array([1]), \
+    #                   viewport=viewport, con=context)
+    
+    # # Convert the frame to uint8
+    # frame = (frame * 255).astype(np.uint8)
+
+    # # Append the frame to the list
+    # frames.append(frame)
+
     # swap OpenGL buffers (blocking call due to v-sync)
     glfw.swap_buffers(window)
 
     # process pending GUI events, call GLFW callbacks
     glfw.poll_events()
+
+# video_writer.close()
 
 glfw.terminate()
