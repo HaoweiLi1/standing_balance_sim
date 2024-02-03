@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 import imageio
 
 xml_path = 'leg.xml'
-simend = 10
+simend = 7.5
 K_p = 0
 
 def generate_large_impulse(perturbation_queue):
@@ -156,26 +156,26 @@ M_total = 80 # kg
 H_total = 1.78 # meters
 m_feet, m_body, l_COM, l_foot, a, K_p = calculate_kp_and_geom( \
                                                 M_total, H_total)
-print(m_feet, m_body, l_COM, l_foot, a, K_p)
 
+## SETTING XML GEOMETRIES TO MATCH LITERATURE VALUES ###
 for geom in root.iter('geom'):
         if geom.get('name') == "shin_geom":
-            # Modify the mass attribute of the geom
+
             geom.set('fromto', f'0 0 0 0 0 {-H_total}')
             # geom.set('pos', f'0 0 {H_total-l_COM}')
             geom.set('mass', str(m_body))
             
         elif geom.get('name') == "foot1_right":
+
             geom.set('fromto', f'0 .02 0 {l_foot} .02 0')
             geom.set('mass', str(m_feet))
-            # parent_body = geom.getparent()
-            # parent_body.set('pos', f'-{a} 0 -0.32')
 
 for body in root.iter('body'):
         if body.get('name') == "le_foot":
              body.set('pos',  f'-{a} 0 -{H_total+0.02}')
 
 tree.write('modified_model.xml')
+########
 
 #get the full path
 modified_xml_path = 'modified_model.xml'
@@ -211,18 +211,12 @@ data.qpos[0]=5*np.pi/180
 # data.qpos[1]=0
 # data.qpos[2]=-np.pi/6
 # data.qpos[3]=-np.pi/6
-# print(data.qpos)
+
 # Set camera configuration
 cam.azimuth = 90.0
 cam.distance = 5.0
 cam.elevation = -5
 cam.lookat = np.array([0.012768, -0.000000, 1.254336])
-
-# perturbation_force = [0.0, 0.0, 1.0]  # Modify as needed
-# mj.MjData.xfrc_applied['shin_right'] = perturbation_force
-
-
-
 
 actuator_type = "torque"
 mj.set_mjcb_control(controller)
@@ -237,9 +231,10 @@ perturbation_thread.start()
 
 
 # Define the video file parameters
-# video_file = 'output_video.mp4'
-# video_fps = 60  # Frames per second
-# frames = [] # list to store frames
+video_file = 'output_video.mp4'
+video_fps = 60  # Frames per second
+frames = [] # list to store frames
+desired_viewport_height = 912
 
 while not glfw.window_should_close(window):
     simstart = data.time
@@ -262,14 +257,15 @@ while not glfw.window_should_close(window):
     mj.mjr_render(viewport, scene, context)
 
     # # Capture the frame
-    # mj.mjr_readPixels(rgb=np.array([0,0,0]),depth=np.array([1]), \
-    #                   viewport=viewport, con=context)
-    
-    # # Convert the frame to uint8
-    # frame = (frame * 255).astype(np.uint8)
+    rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
+    depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
 
+    mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
+    
+    rgb_array = np.flipud(rgb_array)
+    
     # # Append the frame to the list
-    # frames.append(frame)
+    frames.append(rgb_array)
 
     # swap OpenGL buffers (blocking call due to v-sync)
     glfw.swap_buffers(window)
@@ -277,6 +273,6 @@ while not glfw.window_should_close(window):
     # process pending GUI events, call GLFW callbacks
     glfw.poll_events()
 
-# video_writer.close()
+imageio.mimwrite(video_file, frames, fps=video_fps)
 
 glfw.terminate()
