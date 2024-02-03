@@ -119,7 +119,7 @@
     
 	<actuator>
       
-      <motor joint="ankle_y_right" name="ankle_actuator_y" gear="100" />
+      <motor joint="ankle_y_right" name="ankle_actuator_y" gear="144" />
 	</actuator>
 
     

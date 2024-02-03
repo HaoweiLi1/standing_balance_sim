@@ -48,7 +48,7 @@ def controller(model, data):
 
         # GRAVITY COMPENSATION #
         data.ctrl[0] = K_p * \
-            (data.sensordata[0] - 0)
+            (data.sensordata[0] - 5*np.pi/180 )
         # print(data.ctrl[0])
         # data.ctrl[0] = -0.5 * \
         #     (data.sensordata[0] - 0.0) - \
@@ -207,7 +207,7 @@ context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 # glfw.set_scroll_callback(window, scroll)
 
 #set initial conditions
-data.qpos[0]=0
+data.qpos[0]=5*np.pi/180
 # data.qpos[1]=0
 # data.qpos[2]=-np.pi/6
 # data.qpos[3]=-np.pi/6
