@@ -31,7 +31,7 @@
 
       <!-- geoms -->
       <!-- ALL GEOMETRIES ARE CAPSULE TYPE -->
-      <geom type="capsule" condim="1" friction=".7" solimp=".9 .99 .003" solref=".015 1" material="body" group="1"/>
+      <geom type="capsule" mass="10" condim="1" friction=".7" solimp=".9 .99 .003" solref=".015 1" material="body" group="1"/>
       
       <!-- SHIN GEOMETRY -->
       <default class="shin">
@@ -41,14 +41,14 @@
 
       <!-- FOOT GEOMETRY -->
       <default class="foot">
-        <geom type='box' size=".027"/>
+        <geom type='capsule' size=".035" friction="1 0 0" mass="2"/>
         <!-- LEFT HALF OF FOOT -->
         <default class="foot1">
           <geom fromto="-.07 0 0 .14 0 0"/>
         </default>
         <!-- RIGHT HALF OF FOOT -->
         <default class="foot2">
-          <geom fromto="-.07 .01 0 .14  .03 0"/>
+          <geom fromto="-.07 .02 0 .14 .02 0"/>
         </default>
        </default>
 
@@ -79,7 +79,7 @@
     <!-- DEFINE THE LEG, STARTING FROM THE WORLDBODY FRAME? -->
 	<worldbody>
       <!-- DEFINE THE FLOOR IN THE ENVIRONMENT -->
-      <geom name="floor" size="0 0 .05" type="plane" material="grid" condim="3"/>
+      <geom name="floor" size="0 0 .05" type="plane" material="grid" condim="3" friction='1 0 0'/>
       
       <!-- LIGHT SETTING -->
       <light name="spotlight" mode="targetbodycom" target="shin_right" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30"/>
@@ -88,7 +88,7 @@
         <!-- <geom type="plane" size="10 0.1 10" rgba="0.5 0.5 0.5 1"/> -->
         
         <!-- BODY FOR SHIN; CAN HAVE MAX 6-DOF -->
-        <body name="shin_right" pos="0 0 .475">
+        <body name="shin_right" pos="0 0 2">
           <!-- <joint name="knee_right" class="knee"/> -->
           <geom name="shin_geom" class="shin"/>
 
@@ -101,7 +101,7 @@
     
 
           <!-- BODY FOR FOOT; AGAIN I THINK MAX OF 6-DOF PER BODY? -->
-          <body name="le_foot" pos="0.05 0 -0.32">
+          <body name="le_foot" pos="-0.01 0 -0.32">
             <!-- add joints and geometries for left and right halves of foot -->
             <!-- <joint name="ankle_x_right" class="ankle_x" axis="1 0 .5"/> -->
             <joint name="ankle_y_right" class="ankle_y"/>
