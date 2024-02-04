@@ -3,9 +3,7 @@ Contact Aware Physics Simulation of Human Standing Balance - University of Michi
 
 WILL ADD CONTENT TO README SOON!
 
-<video width="320" height="240" controls>
-  <source src=["output_video.mp4"](https://github.com/celwell20/standing_balance_sim/blob/main/output_video.mp4)https://github.com/celwell20/standing_balance_sim/blob/main/output_video.mp4 type="video/mp4">
-</video>
+https://github.com/celwell20/standing_balance_sim/assets/79417604/051f3436-2127-46e8-b59b-f4edda0e1e25
 
 Gravity Compensation
 
