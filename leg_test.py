@@ -16,18 +16,25 @@ xml_path = 'leg.xml'
 simend = 7.5
 K_p = 0
 
-def generate_large_impulse(perturbation_queue):
+def generate_large_impulse(perturbation_queue, impulse_time):
+    
     while True:
-        # Wait for a random amount of time (e.g., between 5 and 10 seconds)
+        
+        while not perturbation_queue.empty():
+            perturbation_queue.get()
+
         wait_time = np.random.uniform(2, 3)
         time.sleep(wait_time)
-
+        
         # Generate a large impulse
-        perturbation = np.random.uniform(30, 50)
+        perturbation = np.random.uniform(500, 600)
+        # print(f"perturbation: {perturbation}")
+        start_time = time.time()
 
-        # Put the generated impulse into the result queue
-        perturbation_queue.put(perturbation)
-        # print(perturbation)
+        while (time.time() - start_time) < impulse_time:
+
+            # Put the generated impulse into the result queue
+            perturbation_queue.put(perturbation)
 
 def controller(model, data):
     """
@@ -76,16 +83,31 @@ def controller(model, data):
         model.actuator_biasprm[2, 2] = -kv
         data.ctrl[2] = 0.0
     
-    x_perturbation=np.random.normal(loc=50, scale=2.5)
-    # if not perturbation_queue.empty():
-    #     x_perturbation = perturbation_queue.get()
+    x_perturbation=0
     
-    # print(x_perturbation)
+
+    if not perturbation_queue.empty():
+        # print(f"perturbation: {perturbation_queue.get()}, time: {time.time()-start}")
+        x_perturbation = perturbation_queue.get()
+    #     pert_flag = True
+    #     print_flag = True
+    
+    # if pert_flag == True:
+    #      del1 = time.time()
+    #      pert_flag = False
+
+    # if x_perturbation == 0 and print_flag == True:
+    #      del2 = time.time()
+    #      print(f'impulse time: {del2-del1}')
+    #      print_flag = False
+
+
+    # print(f"{x_perturbation}, {time.time()-start}" )
     # z_perburbation = np.random.normal(loc=12.5, scale=2.5)
     # Apply the body COM pertubations in Cartersian Space
         
     # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-    data.xfrc_applied[1] = [0, 0, 0, 0., 0., 0.]
+    data.xfrc_applied[1] = [x_perturbation, 0, 0, 0., 0., 0.]
 
     # Apply joint perturbations in Joint Space
     # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
@@ -219,19 +241,21 @@ cam.elevation = -5
 cam.lookat = np.array([0.012768, -0.000000, 1.254336])
 
 actuator_type = "torque"
+start = time.time()
 mj.set_mjcb_control(controller)
 
 perturbation_queue = Queue()
+impulse_time = 0.5
 
 perturbation_thread = threading.Thread \
     (target=generate_large_impulse, 
      daemon=True, 
-     args=(perturbation_queue,) )
+     args=(perturbation_queue,impulse_time) )
 perturbation_thread.start()
 
 
 # Define the video file parameters
-video_file = 'output_video.mp4'
+video_file = 'perturbance_video.mp4'
 video_fps = 60  # Frames per second
 frames = [] # list to store frames
 desired_viewport_height = 912
@@ -257,15 +281,15 @@ while not glfw.window_should_close(window):
     mj.mjr_render(viewport, scene, context)
 
     # # Capture the frame
-    rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
-    depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
+    # rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
+    # depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
 
-    mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
+    # mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
     
-    rgb_array = np.flipud(rgb_array)
-    
-    # # Append the frame to the list
-    frames.append(rgb_array)
+    # rgb_array = np.flipud(rgb_array)
+
+    # # # Append the frame to the list
+    # frames.append(rgb_array) 
 
     # swap OpenGL buffers (blocking call due to v-sync)
     glfw.swap_buffers(window)
