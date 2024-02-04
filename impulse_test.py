@@ -57,8 +57,6 @@ def generate_large_impulse(time_queue, perturbation_queue, impulse_time):
             perturbation_queue.put(perturbation)
             time_queue.put(time.time()-test_start_time)
 
-    return time_queue, perturbation
-
 if __name__ == "__main__":
 
     perturbation_queue = Queue()
