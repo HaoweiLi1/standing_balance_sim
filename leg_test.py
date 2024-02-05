@@ -107,7 +107,7 @@ def controller(model, data):
     # Apply the body COM pertubations in Cartersian Space
         
     # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-    data.xfrc_applied[1] = [x_perturbation, 0, 0, 0., 0., 0.]
+    data.xfrc_applied[1] = [0, 0, 0, 0., 0., 0.]
 
     # Apply joint perturbations in Joint Space
     # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
@@ -255,7 +255,7 @@ perturbation_thread.start()
 
 
 # Define the video file parameters
-video_file = 'perturbance_video.mp4'
+video_file = 'output_video.mp4'
 video_fps = 60  # Frames per second
 frames = [] # list to store frames
 desired_viewport_height = 912
@@ -280,16 +280,16 @@ while not glfw.window_should_close(window):
                        mj.mjtCatBit.mjCAT_ALL.value, scene)
     mj.mjr_render(viewport, scene, context)
 
-    # # Capture the frame
-    # rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
-    # depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
+    # Capture the frame
+    rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
+    depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
 
-    # mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
+    mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
     
-    # rgb_array = np.flipud(rgb_array)
+    rgb_array = np.flipud(rgb_array)
 
-    # # # Append the frame to the list
-    # frames.append(rgb_array) 
+    # # Append the frame to the list
+    frames.append(rgb_array) 
 
     # swap OpenGL buffers (blocking call due to v-sync)
     glfw.swap_buffers(window)
