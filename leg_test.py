@@ -16,6 +16,39 @@ xml_path = 'leg.xml'
 simend = 5
 K_p = 0
 
+def plot_columns(data_array, y_axis):
+    """
+    Plot the data in the first column versus the data in the second column.
+
+    Parameters:
+    - data_array: NumPy array with at least two columns.
+
+    Returns:
+    - None
+    """
+    # Check if the array has at least two columns
+    if data_array.shape[1] < 2:
+        print("Error: The input array must have at least two columns.")
+        return
+
+    # Extract the columns for plotting
+    x_values = data_array[1:, 0]
+    y_values = data_array[1:, 1]
+
+    # Plot the data
+    plt.plot(x_values, y_values, linestyle='-', color='b', label=y_axis)
+
+    # Add labels and a title
+    plt.xlabel('Time [sec]')
+    plt.ylabel(y_axis)
+    plt.title(y_axis + " versus Time")
+
+    # Add a legend
+    plt.legend()
+
+    # Show the plot
+    plt.show()
+
 def generate_large_impulse(perturbation_queue, impulse_time):
     
     while True: # run continuously once we start a thread 
@@ -267,7 +300,7 @@ else:
     # use prerecorded torque values if this is the case
     torque_csv_file_path = "recorded_torques.csv"
     recorded_torques = np.loadtxt(torque_csv_file_path, delimiter=',')
-    print(recorded_torques)
+    # print(recorded_torques)
 
 perturbation_queue = Queue()
 control_log_queue = Queue()
@@ -275,6 +308,10 @@ control_log_array = np.empty((1,2))
 counter_queue = Queue()
 
 impulse_time = 0.25
+
+joint_position_data = np.empty((1,2))
+joint_velocity_data = np.empty((1,2))
+ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_y_right")
 
 perturbation_thread = threading.Thread \
     (target=generate_large_impulse, 
@@ -302,6 +339,10 @@ while not glfw.window_should_close(window):
     
         if not control_log_queue.empty():
             control_log_array = np.vstack((control_log_array, control_log_queue.get()))
+        
+        joint_position_data = np.vstack((joint_position_data, np.array([data.time, data.qpos[ankle_joint_id]]) ))
+        joint_velocity_data = np.vstack((joint_velocity_data, np.array([data.time, data.qvel[ankle_joint_id]]) ))
+
 
     if (data.time>=simend):
         break;
@@ -337,24 +378,17 @@ while not glfw.window_should_close(window):
 
 glfw.terminate()
 
-print(counter_queue.get())
+# print(counter_queue.get())
 
 # print(control_log_array)
 
 if control_flag:
     torque_csv_file_path = "recorded_torques.csv"
     np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
-
-    plt.plot(control_log_array[1:,0], control_log_array[1:,1], linestyle='-', color='b', label='Data Points')
+    plot_columns(control_log_array, 'Control Torque')
 else:
-    plt.plot(recorded_torques[1:,0], recorded_torques[1:,1], linestyle='-', color='b', label='Data Points')
+    plot_columns(recorded_torques, 'Control Torque')
 
-# Add labels and a title
-plt.xlabel('X-axis Label')
-plt.ylabel('Y-axis Label')
-plt.title('Plot of Two Columns from a NumPy Array')
+plot_columns(joint_position_data, "Joint Position")
+plot_columns(joint_velocity_data, "Joint Velocity")
 
-# Add a legend
-plt.legend()
-# Show the plot
-plt.show()
