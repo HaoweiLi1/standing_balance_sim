@@ -90,6 +90,12 @@ def controller(model, data):
     control_torque_time_array = np.array([data.time, human_torque])
     control_log_queue.put(control_torque_time_array)
 
+    counter = 0
+    if not counter_queue.empty():
+        counter = counter_queue.get()
+    counter += 1
+    counter_queue.put(counter)
+
     x_perturbation=0
     
     if not perturbation_queue.empty():
@@ -266,6 +272,7 @@ else:
 perturbation_queue = Queue()
 control_log_queue = Queue()
 control_log_array = np.empty((1,2))
+counter_queue = Queue()
 
 impulse_time = 0.25
 
@@ -330,15 +337,17 @@ while not glfw.window_should_close(window):
 
 glfw.terminate()
 
+print(counter_queue.get())
+
 # print(control_log_array)
 
 if control_flag:
     torque_csv_file_path = "recorded_torques.csv"
-    np.savetxt(torque_csv_file_path, control_log_array, delimiter=",")
+    np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
 
-    plt.plot(control_log_array[:,0], control_log_array[:,1], linestyle='-', color='b', label='Data Points')
+    plt.plot(control_log_array[1:,0], control_log_array[1:,1], linestyle='-', color='b', label='Data Points')
 else:
-    plt.plot(recorded_torques[:,0], recorded_torques[:,1], linestyle='-', color='b', label='Data Points')
+    plt.plot(recorded_torques[1:,0], recorded_torques[1:,1], linestyle='-', color='b', label='Data Points')
 
 # Add labels and a title
 plt.xlabel('X-axis Label')
