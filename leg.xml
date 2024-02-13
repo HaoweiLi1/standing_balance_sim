@@ -7,9 +7,11 @@
 
   <!-- VISUAL SETUP STUFF THAT I DON'T FULLY UNDERSTAND YET -->
   <visual>
-    <map force="0.1" zfar="30"/>
-    <rgba haze="0.15 0.25 0.35 1"/>
-    <global offwidth="2560" offheight="1440" elevation="-20" azimuth="120"/>
+    <map zfar="30"/>
+    <!-- <scale forcewidth="0.1" contactwidth="0.1" contactheight="0.1" connect="0.1" com="0.4" selectpoint="0.2" jointlength="0.1" jointwidth="0.1" actuatorlength="0.7" actuatorwidth="0.2" framelength="1" framewidth="0.1"/> -->
+    <rgba haze="0.15 0.25 0.35 1" />
+    <!-- force="1 0.5 0.5 1" contactforce="0.7 0.9 0.9 1" com="0.9 0.9 0.9 1"/> -->
+    <!-- <global offwidth="2560" offheight="1440" elevation="-20" azimuth="120"/> -->
   </visual>
 
   <!-- DON'T KNOW WHAT THIS DOES YET -->
@@ -31,17 +33,17 @@
 
       <!-- geoms -->
       <!-- ALL GEOMETRIES ARE CAPSULE TYPE -->
-      <geom type="capsule" mass="10" condim="1" friction=".7" solimp=".9 .99 .003" solref=".015 1" material="body" group="1"/>
+      <geom type="capsule" mass="10" condim="1" friction="0.7 0.005 0.0001" solimp=".9 .99 .003" solref=".015 1" material="body" group="1"/>
       
       <!-- SHIN GEOMETRY -->
       <default class="shin">
-        <geom size="0.045 0.045 1.78" pos="0 0 .07"/>
+        <geom size="0.045 0.045 1.78"/>  <!--pos="0 0 .07"/> -->
       </default>
 
 
       <!-- FOOT GEOMETRY -->
       <default class="foot">
-        <geom type='capsule' size=".035" friction="1 0 0" mass="2"/>
+        <geom type='capsule' size=".035" friction="0.9 0 0" solimp=".9 .99 .003" solref=".015 1" mass="2"/>
         <!-- LEFT HALF OF FOOT -->
         <default class="foot1">
           <geom fromto="-.07 0 0 .14 0 0"/>
@@ -79,7 +81,7 @@
     <!-- DEFINE THE LEG, STARTING FROM THE WORLDBODY FRAME? -->
 	<worldbody>
       <!-- DEFINE THE FLOOR IN THE ENVIRONMENT -->
-      <geom name="floor" size="0 0 .05" type="plane" material="grid" condim="3" friction='1 0 0'/>
+      <geom name="ground" size="0 0 .05" type="plane" material="grid" condim="3" friction='0.99 0.99 0.99' solimp=".9 .99 .003" solref=".015 1"/>
       
       <!-- LIGHT SETTING -->
       <light name="spotlight" mode="targetbodycom" target="shin_right" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30"/>
@@ -88,7 +90,7 @@
         <!-- <geom type="plane" size="10 0.1 10" rgba="0.5 0.5 0.5 1"/> -->
         
         <!-- BODY FOR SHIN; CAN HAVE MAX 6-DOF -->
-        <body name="shin_right" pos="0 0 2">
+        <body name="shin_right" pos="0 0 1.85">
           <!-- <joint name="knee_right" class="knee"/> -->
           <geom name="shin_geom" class="shin"/>
 
@@ -125,6 +127,7 @@
       <position name="position_servo_x_right" joint="ankle_x_right" kp="10"/>
 	    <velocity name="velocity_servo_x_right" joint="ankle_x_right" kv="0"/> -->
       <motor joint="ankle_y_right" name="ankle_actuator_y" gear="144"/>
+      <motor joint="ankle_y_right" name="exo_ankle_actuator_y" gear="144"/>
 	</actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->

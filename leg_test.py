@@ -13,13 +13,15 @@ import xml.etree.ElementTree as ET
 import imageio
 
 xml_path = 'leg.xml'
-simend = 7.5
+simend = 5
 K_p = 0
 
 def generate_large_impulse(perturbation_queue, impulse_time):
     
-    while True:
+    while True: # run continuously once we start a thread 
+                # for this function
         
+        # empty the queue from the previous impulse generation
         while not perturbation_queue.empty():
             perturbation_queue.get()
 
@@ -27,23 +29,21 @@ def generate_large_impulse(perturbation_queue, impulse_time):
         time.sleep(wait_time)
         
         # Generate a large impulse
-        perturbation = np.random.uniform(500, 600)
+        perturbation = np.random.uniform(350, 358)
+        direction_bool = np.random.choice([-1,1])
         # print(f"perturbation: {perturbation}")
         start_time = time.time()
 
         while (time.time() - start_time) < impulse_time:
 
             # Put the generated impulse into the result queue
-            perturbation_queue.put(perturbation)
+            perturbation_queue.put(direction_bool*perturbation)
 
 def controller(model, data):
     """
-    This function implements a PD controller
-
-    Since there are no gravity compensation,
-    it will not be very accurate at tracking
-    the set point. It will be accurate if
-    gravity is turned off.
+    Controller function for the leg. The only two parameters 
+    for this function can be mujoco.model and mujoco.data
+    otherwise it doesn't seem to run properly
     """
 
     if actuator_type == "torque":
@@ -54,8 +54,11 @@ def controller(model, data):
         # print()
 
         # GRAVITY COMPENSATION #
-        data.ctrl[0] = K_p * \
+        human_torque = K_p * \
             (data.sensordata[0] - 5*np.pi/180 )
+        exo_torque = -1*(human_torque)
+        data.ctrl[0] = human_torque
+        # data.ctrl[1] = exo_torque
         # print(data.ctrl[0])
         # data.ctrl[0] = -0.5 * \
         #     (data.sensordata[0] - 0.0) - \
@@ -83,31 +86,18 @@ def controller(model, data):
         model.actuator_biasprm[2, 2] = -kv
         data.ctrl[2] = 0.0
     
+    # Log the actuator torque and timestep to an array for later use
+    control_torque_time_array = np.array([data.time, human_torque])
+    control_log_queue.put(control_torque_time_array)
+
     x_perturbation=0
     
-
     if not perturbation_queue.empty():
         # print(f"perturbation: {perturbation_queue.get()}, time: {time.time()-start}")
         x_perturbation = perturbation_queue.get()
-    #     pert_flag = True
-    #     print_flag = True
     
-    # if pert_flag == True:
-    #      del1 = time.time()
-    #      pert_flag = False
-
-    # if x_perturbation == 0 and print_flag == True:
-    #      del2 = time.time()
-    #      print(f'impulse time: {del2-del1}')
-    #      print_flag = False
-
-
-    # print(f"{x_perturbation}, {time.time()-start}" )
-    # z_perburbation = np.random.normal(loc=12.5, scale=2.5)
-    # Apply the body COM pertubations in Cartersian Space
-        
     # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-    data.xfrc_applied[1] = [0, 0, 0, 0., 0., 0.]
+    # data.xfrc_applied[1] = [x_perturbation, 0, 0, 0., 0., 0.]
 
     # Apply joint perturbations in Joint Space
     # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
@@ -173,11 +163,10 @@ tree = ET.parse(xml_path)
 root = tree.getroot()
 # MODIFY THE XML FILE AND INSERT THE MASS AND LENGTH
 # PROPERTIES OF INTEREST WHICH ARE CALCULATED BY 
-# calculate_kp_and_geom(weight, height)
 M_total = 80 # kg
 H_total = 1.78 # meters
-m_feet, m_body, l_COM, l_foot, a, K_p = calculate_kp_and_geom( \
-                                                M_total, H_total)
+m_feet, m_body, l_COM, l_foot, a, K_p = calculate_kp_and_geom \
+                                        (M_total, H_total)
 
 ## SETTING XML GEOMETRIES TO MATCH LITERATURE VALUES ###
 for geom in root.iter('geom'):
@@ -210,6 +199,19 @@ data = mj.MjData(model)                # MuJoCo data
 cam = mj.MjvCamera()                        # Abstract camera
 opt = mj.MjvOption()                        # visualization options
 
+# visualize contact frames and forces, make body transparent
+# presently this code isn't working :,)
+mj.mjv_defaultOption(opt)
+opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
+opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
+opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
+opt.flags[mj.mjtVisFlag.mjVIS_TRANSPARENT] = True
+# tweak scales of contact visualization elements
+model.vis.scale.contactwidth = 0.1
+model.vis.scale.contactheight = 0.03
+model.vis.scale.forcewidth = 0.05
+model.vis.map.force = 0.3
+
 # Init GLFW, create window, make OpenGL context current, request v-sync
 glfw.init()
 window = glfw.create_window(1200, 900, "Demo", None, None)
@@ -222,11 +224,16 @@ mj.mjv_defaultOption(opt)
 scene = mj.MjvScene(model, maxgeom=10000)
 context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 
+### IDK WHAT THIS STUFF DOES EXACTLY, IT IS AN ARTIFACT FROM
+### THE MUJOCO TUTORIAL I USED TO START THIS SCRIPT
+
 # install GLFW mouse and keyboard callbacks
 # glfw.set_key_callback(window, keyboard)
 # glfw.set_cursor_pos_callback(window, mouse_move)
 # glfw.set_mouse_button_callback(window, mouse_button)
 # glfw.set_scroll_callback(window, scroll)
+
+#############################
 
 #set initial conditions
 data.qpos[0]=5*np.pi/180
@@ -240,12 +247,27 @@ cam.distance = 5.0
 cam.elevation = -5
 cam.lookat = np.array([0.012768, -0.000000, 1.254336])
 
+# SET CONTROL MODE AND PASS CONTROLLER METHOD
+# TO MUJOCO THING THAT DOES CONTROL... DONT FULLY
+# UNDERSTAND WHAT IS GOING ON HERE BUT IT DOES SEEM
+# TO WORK.
 actuator_type = "torque"
 start = time.time()
-mj.set_mjcb_control(controller)
+
+control_flag = False
+if control_flag:
+    mj.set_mjcb_control(controller)
+else:
+    # use prerecorded torque values if this is the case
+    torque_csv_file_path = "recorded_torques.csv"
+    recorded_torques = np.loadtxt(torque_csv_file_path, delimiter=',')
+    print(recorded_torques)
 
 perturbation_queue = Queue()
-impulse_time = 0.5
+control_log_queue = Queue()
+control_log_array = np.empty((1,2))
+
+impulse_time = 0.25
 
 perturbation_thread = threading.Thread \
     (target=generate_large_impulse, 
@@ -260,12 +282,19 @@ video_fps = 60  # Frames per second
 frames = [] # list to store frames
 desired_viewport_height = 912
 
+recorded_control_counter = 0
+
 while not glfw.window_should_close(window):
     simstart = data.time
 
     while (data.time - simstart < 1.0/60.0):
+        if not control_flag:
+            data.ctrl[0] = recorded_torques[recorded_control_counter,1]
+            recorded_control_counter+=1
         mj.mj_step(model, data)
-        # print(data.efc_J)
+    
+        if not control_log_queue.empty():
+            control_log_array = np.vstack((control_log_array, control_log_queue.get()))
 
     if (data.time>=simend):
         break;
@@ -281,15 +310,15 @@ while not glfw.window_should_close(window):
     mj.mjr_render(viewport, scene, context)
 
     # Capture the frame
-    rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
-    depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
+    # rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
+    # depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
 
-    mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
+    # mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
     
-    rgb_array = np.flipud(rgb_array)
+    # rgb_array = np.flipud(rgb_array)
 
-    # # Append the frame to the list
-    frames.append(rgb_array) 
+    # # # Append the frame to the list
+    # frames.append(rgb_array) 
 
     # swap OpenGL buffers (blocking call due to v-sync)
     glfw.swap_buffers(window)
@@ -297,6 +326,26 @@ while not glfw.window_should_close(window):
     # process pending GUI events, call GLFW callbacks
     glfw.poll_events()
 
-imageio.mimwrite(video_file, frames, fps=video_fps)
+# imageio.mimwrite(video_file, frames, fps=video_fps)
 
 glfw.terminate()
+
+# print(control_log_array)
+
+if control_flag:
+    torque_csv_file_path = "recorded_torques.csv"
+    np.savetxt(torque_csv_file_path, control_log_array, delimiter=",")
+
+    plt.plot(control_log_array[:,0], control_log_array[:,1], linestyle='-', color='b', label='Data Points')
+else:
+    plt.plot(recorded_torques[:,0], recorded_torques[:,1], linestyle='-', color='b', label='Data Points')
+
+# Add labels and a title
+plt.xlabel('X-axis Label')
+plt.ylabel('Y-axis Label')
+plt.title('Plot of Two Columns from a NumPy Array')
+
+# Add a legend
+plt.legend()
+# Show the plot
+plt.show()
