@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 import imageio
 
 xml_path = 'leg.xml'
-simend = 5
+simend = 10
 K_p = 0
 
 def plot_columns(data_array, y_axis):
@@ -58,15 +58,16 @@ def generate_large_impulse(perturbation_queue, impulse_time):
         while not perturbation_queue.empty():
             perturbation_queue.get()
 
-        wait_time = np.random.uniform(2, 3)
+        wait_time = np.random.uniform(4.5, 4.75)
         time.sleep(wait_time)
         
         # Generate a large impulse
-        perturbation = np.random.uniform(350, 358)
-        direction_bool = np.random.choice([-1,1])
-        # print(f"perturbation: {perturbation}")
-        start_time = time.time()
+        perturbation = np.random.uniform(325, 350)
 
+        # this will generate either -1 or 1
+        direction_bool = np.random.choice([-1,1])
+        print(direction_bool)
+        start_time = time.time()
         while (time.time() - start_time) < impulse_time:
 
             # Put the generated impulse into the result queue
@@ -136,7 +137,7 @@ def controller(model, data):
         x_perturbation = perturbation_queue.get()
     
     # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-    # data.xfrc_applied[1] = [x_perturbation, 0, 0, 0., 0., 0.]
+    data.xfrc_applied[1] = [x_perturbation, 0, 0, 0., 0., 0.]
 
     # Apply joint perturbations in Joint Space
     # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
@@ -231,25 +232,11 @@ tree.write('modified_model.xml')
 modified_xml_path = 'modified_model.xml'
 script_directory = os.path.dirname(os.path.abspath(__file__))
 xml_path = os.path.join(script_directory, xml_path)
-model = mj.MjModel.from_xml_path(modified_xml_path)  # MuJoCo model
-# model = mj.MjData.from_xml_string(xml_path)
+model = mj.MjModel.from_xml_path(modified_xml_path)  # MuJoCo XML model
 
 data = mj.MjData(model)                # MuJoCo data
 cam = mj.MjvCamera()                        # Abstract camera
 opt = mj.MjvOption()                        # visualization options
-
-# visualize contact frames and forces, make body transparent
-# presently this code isn't working :,)
-mj.mjv_defaultOption(opt)
-opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
-opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
-opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
-opt.flags[mj.mjtVisFlag.mjVIS_TRANSPARENT] = True
-# tweak scales of contact visualization elements
-model.vis.scale.contactwidth = 0.1
-model.vis.scale.contactheight = 0.03
-model.vis.scale.forcewidth = 0.05
-model.vis.map.force = 0.3
 
 # Init GLFW, create window, make OpenGL context current, request v-sync
 glfw.init()
@@ -260,6 +247,21 @@ glfw.swap_interval(1)
 # initialize visualization data structures
 mj.mjv_defaultCamera(cam)
 mj.mjv_defaultOption(opt)
+opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
+opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
+opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
+# opt.flags[mj.mjtVisFlag.mjVIS_TRANSPARENT] = True
+
+# tweak scales of contact visualization elements
+model.vis.scale.contactwidth = 0.05 # width of the floor contact point
+model.vis.scale.contactheight = 0.01 # height of the floor contact point
+model.vis.scale.forcewidth = 0.03 # width of the force vector
+model.vis.map.force = 0.1 # scaling parameter for force vector's length
+
+# tweaking colors of stuff
+model.vis.rgba.contactforce = np.array([0.7, 0., 0., 0.5], dtype=np.float32)
+model.vis.rgba.force = np.array([0., 0.7, 0., 0.5], dtype=np.float32)
+
 scene = mj.MjvScene(model, maxgeom=10000)
 context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 
@@ -286,15 +288,15 @@ cam.distance = 5.0
 cam.elevation = -5
 cam.lookat = np.array([0.012768, -0.000000, 1.254336])
 
-# SET CONTROL MODE AND PASS CONTROLLER METHOD
-# TO MUJOCO THING THAT DOES CONTROL... DONT FULLY
-# UNDERSTAND WHAT IS GOING ON HERE BUT IT DOES SEEM
-# TO WORK.
 actuator_type = "torque"
 start = time.time()
 
-control_flag = False
+control_flag = True
 if control_flag:
+    # SET CONTROL MODE AND PASS CONTROLLER METHOD
+    # TO MUJOCO THING THAT DOES CONTROL... DONT FULLY
+    # UNDERSTAND WHAT IS GOING ON HERE BUT IT DOES SEEM
+    # TO WORK.
     mj.set_mjcb_control(controller)
 else:
     # use prerecorded torque values if this is the case
@@ -307,7 +309,7 @@ control_log_queue = Queue()
 control_log_array = np.empty((1,2))
 counter_queue = Queue()
 
-impulse_time = 0.25
+impulse_time = 0.35
 
 joint_position_data = np.empty((1,2))
 joint_velocity_data = np.empty((1,2))
@@ -321,7 +323,7 @@ perturbation_thread.start()
 
 
 # Define the video file parameters
-video_file = 'output_video.mp4'
+video_file = 'fail.mp4'
 video_fps = 60  # Frames per second
 frames = [] # list to store frames
 desired_viewport_height = 912
@@ -358,15 +360,15 @@ while not glfw.window_should_close(window):
     mj.mjr_render(viewport, scene, context)
 
     # Capture the frame
-    # rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
-    # depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
+    rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
+    depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
 
-    # mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
+    mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
     
-    # rgb_array = np.flipud(rgb_array)
+    rgb_array = np.flipud(rgb_array)
 
     # # # Append the frame to the list
-    # frames.append(rgb_array) 
+    frames.append(rgb_array) 
 
     # swap OpenGL buffers (blocking call due to v-sync)
     glfw.swap_buffers(window)
@@ -374,21 +376,17 @@ while not glfw.window_should_close(window):
     # process pending GUI events, call GLFW callbacks
     glfw.poll_events()
 
-# imageio.mimwrite(video_file, frames, fps=video_fps)
+imageio.mimwrite(video_file, frames, fps=video_fps)
 
 glfw.terminate()
 
-# print(counter_queue.get())
+# if control_flag:
+#     torque_csv_file_path = "recorded_torques.csv"
+#     np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
+#     plot_columns(control_log_array, 'Control Torque')
+# else:
+#     plot_columns(recorded_torques, 'Control Torque')
 
-# print(control_log_array)
-
-if control_flag:
-    torque_csv_file_path = "recorded_torques.csv"
-    np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
-    plot_columns(control_log_array, 'Control Torque')
-else:
-    plot_columns(recorded_torques, 'Control Torque')
-
-plot_columns(joint_position_data, "Joint Position")
-plot_columns(joint_velocity_data, "Joint Velocity")
+# plot_columns(joint_position_data, "Joint Position")
+# plot_columns(joint_velocity_data, "Joint Velocity")
 
