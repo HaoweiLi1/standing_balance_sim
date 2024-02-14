@@ -6,15 +6,46 @@ from typing import Callable, Optional, Union, List
 import scipy.linalg
 import mediapy as media
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import threading
 import time
 from queue import Queue
 import xml.etree.ElementTree as ET
 import imageio
 
-xml_path = 'leg.xml'
-simend = 10
+xml_path = 'xml_files\leg.xml'
+simend = 5
 K_p = 0
+
+def plot_3d_pose_trajectory(positions, orientations):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title('Body Center of Mass Pose Trajectory')
+
+    # Plot the trajectory
+    ax.plot(positions[1:, 1], positions[1:, 2], positions[1:, 3], marker=".",color='k')
+
+    # Draw the orientation vectors
+    for i in range(1,len(positions),10):
+        ax.quiver(positions[i, 1], positions[i, 2], positions[i, 3],
+                  orientations[i][0], orientations[i][3], orientations[i][6],
+                  color='r', length=0.1)
+        
+        ax.quiver(positions[i, 1], positions[i, 2], positions[i, 3],
+                  orientations[i][1], orientations[i][4], orientations[i][7],
+                  color='g', length=0.1)
+
+        ax.quiver(positions[i, 1], positions[i, 2], positions[i, 3],
+                  orientations[i][2], orientations[i][5], orientations[i][8],
+                  color='b', length=0.1)
+    ax.set_ylim(-0.5,0.5)
+    legend_entries = ["Body Cartesian Position", "Body X-Orientation", "Body Y-Orientation", "Body Z-Orientation"]
+    plt.legend(labels=legend_entries)
+    plt.show()
 
 def plot_columns(data_array, y_axis):
     """
@@ -58,15 +89,15 @@ def generate_large_impulse(perturbation_queue, impulse_time):
         while not perturbation_queue.empty():
             perturbation_queue.get()
 
-        wait_time = np.random.uniform(4.5, 4.75)
+        wait_time = np.random.uniform(1,2)
         time.sleep(wait_time)
         
         # Generate a large impulse
-        perturbation = np.random.uniform(325, 350)
+        perturbation = np.random.uniform(400, 401)
 
         # this will generate either -1 or 1
         direction_bool = np.random.choice([-1,1])
-        print(direction_bool)
+        # print(direction_bool)
         start_time = time.time()
         while (time.time() - start_time) < impulse_time:
 
@@ -89,7 +120,7 @@ def controller(model, data):
 
         # GRAVITY COMPENSATION #
         human_torque = K_p * \
-            (data.sensordata[0] - 5*np.pi/180 )
+            (data.sensordata[0] - 0) #5*np.pi/180 )
         exo_torque = -1*(human_torque)
         data.ctrl[0] = human_torque
         # data.ctrl[1] = exo_torque
@@ -225,11 +256,11 @@ for body in root.iter('body'):
         if body.get('name') == "le_foot":
              body.set('pos',  f'-{a} 0 -{H_total+0.02}')
 
-tree.write('modified_model.xml')
+tree.write('xml_files\modified_model.xml')
 ########
 
 #get the full path
-modified_xml_path = 'modified_model.xml'
+modified_xml_path = 'xml_files\modified_model.xml'
 script_directory = os.path.dirname(os.path.abspath(__file__))
 xml_path = os.path.join(script_directory, xml_path)
 model = mj.MjModel.from_xml_path(modified_xml_path)  # MuJoCo XML model
@@ -250,17 +281,27 @@ mj.mjv_defaultOption(opt)
 opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
 opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
 opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
-# opt.flags[mj.mjtVisFlag.mjVIS_TRANSPARENT] = True
+# opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
+opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = True
+opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
+
+# tweak map parameters for visualization
+model.vis.map.force = 0.1 # scaling parameter for force vector's length
+model.vis.map.torque = 0.1 # scaling parameter for control torque
 
 # tweak scales of contact visualization elements
 model.vis.scale.contactwidth = 0.05 # width of the floor contact point
 model.vis.scale.contactheight = 0.01 # height of the floor contact point
 model.vis.scale.forcewidth = 0.03 # width of the force vector
-model.vis.map.force = 0.1 # scaling parameter for force vector's length
+model.vis.scale.com = 0.2 # com radius
 
 # tweaking colors of stuff
 model.vis.rgba.contactforce = np.array([0.7, 0., 0., 0.5], dtype=np.float32)
 model.vis.rgba.force = np.array([0., 0.7, 0., 0.5], dtype=np.float32)
+model.vis.rgba.joint = np.array([0.7, 0.7, 0.7, 0.5])
+model.vis.rgba.actuatorpositive = np.array([0., 0.9, 0., 0.5])
+model.vis.rgba.actuatornegative = np.array([0.9, 0., 0., 0.5])
+model.vis.rgba.com = np.array([1.,0.647,0.,0.5])
 
 scene = mj.MjvScene(model, maxgeom=10000)
 context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
@@ -277,7 +318,7 @@ context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 #############################
 
 #set initial conditions
-data.qpos[0]=5*np.pi/180
+data.qpos[0]= 0 #5*np.pi/180
 # data.qpos[1]=0
 # data.qpos[2]=-np.pi/6
 # data.qpos[3]=-np.pi/6
@@ -288,42 +329,51 @@ cam.distance = 5.0
 cam.elevation = -5
 cam.lookat = np.array([0.012768, -0.000000, 1.254336])
 
+# Use torque control mode
 actuator_type = "torque"
 start = time.time()
 
 control_flag = True
 if control_flag:
-    # SET CONTROL MODE AND PASS CONTROLLER METHOD
+    # PASS CONTROLLER METHOD
     # TO MUJOCO THING THAT DOES CONTROL... DONT FULLY
     # UNDERSTAND WHAT IS GOING ON HERE BUT IT DOES SEEM
     # TO WORK.
     mj.set_mjcb_control(controller)
 else:
     # use prerecorded torque values if this is the case
-    torque_csv_file_path = "recorded_torques.csv"
+    torque_csv_file_path = "csv_files\recorded_torques.csv"
     recorded_torques = np.loadtxt(torque_csv_file_path, delimiter=',')
     # print(recorded_torques)
 
+# parameter that sets length of impulse
+impulse_time = 0.5
+
+# precallocating Queues and arrays for data sharing and data collection
 perturbation_queue = Queue()
 control_log_queue = Queue()
 control_log_array = np.empty((1,2))
 counter_queue = Queue()
-
-impulse_time = 0.35
-
 joint_position_data = np.empty((1,2))
 joint_velocity_data = np.empty((1,2))
+body_com_data = np.empty((1,4))
+body_orientation_data = np.empty((1,9))
+
+# ID number for the ankle joint, used for data collection
 ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_y_right")
 
+# ID number for the body geometry
+human_body_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_BODY, "shin_right")
+
+# start the thread that generates the perturbation impulses
 perturbation_thread = threading.Thread \
     (target=generate_large_impulse, 
      daemon=True, 
      args=(perturbation_queue,impulse_time) )
 perturbation_thread.start()
 
-
 # Define the video file parameters
-video_file = 'fail.mp4'
+video_file = 'pose_trajectory.mp4'
 video_fps = 60  # Frames per second
 frames = [] # list to store frames
 desired_viewport_height = 912
@@ -344,7 +394,14 @@ while not glfw.window_should_close(window):
         
         joint_position_data = np.vstack((joint_position_data, np.array([data.time, data.qpos[ankle_joint_id]]) ))
         joint_velocity_data = np.vstack((joint_velocity_data, np.array([data.time, data.qvel[ankle_joint_id]]) ))
-
+        com = data.xipos[human_body_id]
+        orientation_vector = data.ximat[human_body_id]
+        body_com_data = np.vstack((body_com_data, np.array([data.time, com[0], com[1], com[2]]) ))
+        # orientation_matrix_3d = np.reshape()
+        # print(orientation_vector)
+        orientation_matrix = np.reshape(orientation_vector, (3,3))
+        # print(orientation_matrix)
+        body_orientation_data = np.vstack((body_orientation_data, orientation_vector))
 
     if (data.time>=simend):
         break;
@@ -360,15 +417,15 @@ while not glfw.window_should_close(window):
     mj.mjr_render(viewport, scene, context)
 
     # Capture the frame
-    rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
-    depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
+    # rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
+    # depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
 
-    mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
+    # mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
     
-    rgb_array = np.flipud(rgb_array)
+    # rgb_array = np.flipud(rgb_array)
 
     # # # Append the frame to the list
-    frames.append(rgb_array) 
+    # frames.append(rgb_array) 
 
     # swap OpenGL buffers (blocking call due to v-sync)
     glfw.swap_buffers(window)
@@ -376,10 +433,11 @@ while not glfw.window_should_close(window):
     # process pending GUI events, call GLFW callbacks
     glfw.poll_events()
 
-imageio.mimwrite(video_file, frames, fps=video_fps)
+# imageio.mimwrite(video_file, frames, fps=video_fps)
 
 glfw.terminate()
 
+plot_3d_pose_trajectory(body_com_data, body_orientation_data)
 # if control_flag:
 #     torque_csv_file_path = "recorded_torques.csv"
 #     np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
