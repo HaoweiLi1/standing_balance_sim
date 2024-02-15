@@ -82,7 +82,7 @@ def plot_columns(data_array, y_axis):
 
 def generate_large_impulse(perturbation_queue, impulse_time):
     
-    while True: # run continuously once we start a thread 
+    while not impulse_thread_exit_flag: # run continuously once we start a thread 
                 # for this function
         
         # empty the queue from the previous impulse generation
@@ -98,9 +98,15 @@ def generate_large_impulse(perturbation_queue, impulse_time):
         # this will generate either -1 or 1
         direction_bool = np.random.choice([-1,1])
         # print(direction_bool)
-        start_time = time.time()
-        while (time.time() - start_time) < impulse_time:
-
+        # start_time = time.time()
+        # delta = time.time() - start_time
+        end_time = time.time() + impulse_time
+        print(time.time())
+        print(end_time)
+        while time.time() < end_time:
+            # delta = time.time() - start_time
+            # time.sleep(0.0000000001)
+            print(f"poo {time.time()}")
             # Put the generated impulse into the result queue
             perturbation_queue.put(direction_bool*perturbation)
 
@@ -120,7 +126,7 @@ def controller(model, data):
 
         # GRAVITY COMPENSATION #
         human_torque = K_p * \
-            (data.sensordata[0] - 0) #5*np.pi/180 )
+            (data.sensordata[0] - 5*np.pi/180 )
         exo_torque = -1*(human_torque)
         data.ctrl[0] = human_torque
         # data.ctrl[1] = exo_torque
@@ -166,9 +172,11 @@ def controller(model, data):
     if not perturbation_queue.empty():
         # print(f"perturbation: {perturbation_queue.get()}, time: {time.time()-start}")
         x_perturbation = perturbation_queue.get()
+        perturbation_datalogger_queue.put(x_perturbation)
     
     # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
     data.xfrc_applied[1] = [x_perturbation, 0, 0, 0., 0., 0.]
+    
 
     # Apply joint perturbations in Joint Space
     # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
@@ -318,7 +326,7 @@ context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 #############################
 
 #set initial conditions
-data.qpos[0]= 0 #5*np.pi/180
+data.qpos[0]= 5*np.pi/180
 # data.qpos[1]=0
 # data.qpos[2]=-np.pi/6
 # data.qpos[3]=-np.pi/6
@@ -333,6 +341,35 @@ cam.lookat = np.array([0.012768, -0.000000, 1.254336])
 actuator_type = "torque"
 start = time.time()
 
+# parameter that sets length of impulse
+impulse_time = 0.25
+
+# precallocating Queues and arrays for data sharing and data collection
+perturbation_queue = Queue()
+control_log_queue = Queue()
+counter_queue = Queue()
+perturbation_datalogger_queue = Queue()
+control_log_array = np.empty((1,2))
+joint_position_data = np.empty((1,2))
+joint_velocity_data = np.empty((1,2))
+body_com_data = np.empty((1,4))
+body_orientation_data = np.empty((1,9))
+perturbation_data_array = np.empty((1,2))
+
+# ID number for the ankle joint, used for data collection
+ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_y_right")
+
+# ID number for the body geometry
+human_body_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_BODY, "shin_right")
+
+# Define the video file parameters
+video_file = 'pose_trajectory.mp4'
+video_fps = 60  # Frames per second
+frames = [] # list to store frames
+desired_viewport_height = 912
+
+recorded_control_counter = 0
+
 control_flag = True
 if control_flag:
     # PASS CONTROLLER METHOD
@@ -345,62 +382,53 @@ else:
     torque_csv_file_path = "csv_files\recorded_torques.csv"
     recorded_torques = np.loadtxt(torque_csv_file_path, delimiter=',')
     # print(recorded_torques)
-
-# parameter that sets length of impulse
-impulse_time = 0.5
-
-# precallocating Queues and arrays for data sharing and data collection
-perturbation_queue = Queue()
-control_log_queue = Queue()
-control_log_array = np.empty((1,2))
-counter_queue = Queue()
-joint_position_data = np.empty((1,2))
-joint_velocity_data = np.empty((1,2))
-body_com_data = np.empty((1,4))
-body_orientation_data = np.empty((1,9))
-
-# ID number for the ankle joint, used for data collection
-ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_y_right")
-
-# ID number for the body geometry
-human_body_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_BODY, "shin_right")
-
 # start the thread that generates the perturbation impulses
+impulse_thread_exit_flag = False
 perturbation_thread = threading.Thread \
     (target=generate_large_impulse, 
      daemon=True, 
      args=(perturbation_queue,impulse_time) )
 perturbation_thread.start()
 
-# Define the video file parameters
-video_file = 'pose_trajectory.mp4'
-video_fps = 60  # Frames per second
-frames = [] # list to store frames
-desired_viewport_height = 912
-
-recorded_control_counter = 0
-
 while not glfw.window_should_close(window):
     simstart = data.time
 
     while (data.time - simstart < 1.0/60.0):
+        
+        # if we aren't using the PD control mode and instead using prerecorded data, then
+        # we should set the control input to the nth value of the recorded torque array
         if not control_flag:
             data.ctrl[0] = recorded_torques[recorded_control_counter,1]
             recorded_control_counter+=1
+
+        # step the simulation forward in time
         mj.mj_step(model, data)
     
+        # collect data from the control log if it isn't empty, this is used in the PD control mode
         if not control_log_queue.empty():
             control_log_array = np.vstack((control_log_array, control_log_queue.get()))
         
+        # collect data from perturbation for now perturbation is 1D so we have (n,2) array of pert. data
+        if not perturbation_datalogger_queue.empty():
+            perturbation_data_array = np.vstack((perturbation_data_array, np.array([data.time, perturbation_datalogger_queue.get()]) ))
+        else:
+            # if the perturbation queue is empty then the perturbation is zero
+            # print(time.time())
+            perturbation_data_array = np.vstack((perturbation_data_array, np.array([data.time, 0.]) ))
+            
+        # collect joint position and velocity data from simulation for visualization
         joint_position_data = np.vstack((joint_position_data, np.array([data.time, data.qpos[ankle_joint_id]]) ))
         joint_velocity_data = np.vstack((joint_velocity_data, np.array([data.time, data.qvel[ankle_joint_id]]) ))
+       
+        # collect center of mass data for ID associated with human body element of XML model
         com = data.xipos[human_body_id]
+        # collect 1x9 orientation vector for ID associated with human body element of XML model
+        # format is [r_11, r_12, r_13, r_21, r_22, r_23, r_31, r_32, r_33]
         orientation_vector = data.ximat[human_body_id]
+        # add center of mass data to array
         body_com_data = np.vstack((body_com_data, np.array([data.time, com[0], com[1], com[2]]) ))
-        # orientation_matrix_3d = np.reshape()
-        # print(orientation_vector)
-        orientation_matrix = np.reshape(orientation_vector, (3,3))
-        # print(orientation_matrix)
+        # add orientation data to array
+        # orientation_matrix = np.reshape(orientation_vector, (3,3))
         body_orientation_data = np.vstack((body_orientation_data, orientation_vector))
 
     if (data.time>=simend):
@@ -437,14 +465,17 @@ while not glfw.window_should_close(window):
 
 glfw.terminate()
 
-plot_3d_pose_trajectory(body_com_data, body_orientation_data)
+impulse_thread_exit_flag = True
+perturbation_thread.join()
+
+# plot_3d_pose_trajectory(body_com_data, body_orientation_data)
 # if control_flag:
-#     torque_csv_file_path = "recorded_torques.csv"
-#     np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
+    # torque_csv_file_path = "csv_files/recorded_torques_test.csv"
+    # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
 #     plot_columns(control_log_array, 'Control Torque')
 # else:
 #     plot_columns(recorded_torques, 'Control Torque')
-
+plot_columns(perturbation_data_array, "perturbation versus time")
 # plot_columns(joint_position_data, "Joint Position")
 # plot_columns(joint_velocity_data, "Joint Velocity")
 
