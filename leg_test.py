@@ -75,6 +75,99 @@ def plot_columns(data_array, y_axis):
     plt.title(y_axis + " versus Time")
 
     # Add a legend
+    # plt.legend()
+
+    # Show the plot
+    plt.show()
+
+def plot_two_columns(data_array1, data_array2, y_axis1, y_axis2):
+    """
+    Plot the data in the first column of data_array1 versus the data in the first column of data_array2,
+    and the second column of data_array1 versus the second column of data_array2.
+
+    Parameters:
+    - data_array1: NumPy array with at least two columns.
+    - data_array2: NumPy array with at least two columns.
+    - y_axis1: Label for the y-axis of the first plot.
+    - y_axis2: Label for the y-axis of the second plot.
+
+    Returns:
+    - None
+    """
+    # Check if the arrays have at least two columns
+    if data_array1.shape[1] < 2 or data_array2.shape[1] < 2:
+        print("Error: Both input arrays must have at least two columns.")
+        return
+
+    # Extract the columns for plotting
+    x_values1 = data_array1[1:, 0]
+    y_values1 = data_array1[1:, 1]
+
+    x_values2 = data_array2[1:, 0]
+    y_values2 = data_array2[1:, 1]
+
+    # Plot the data for the first array
+    plt.plot(x_values1, y_values1, linestyle='-', color='b', label=y_axis1)
+
+    # Plot the data for the second array on the same plot
+    plt.plot(x_values1, y_values2, linestyle='-', color='r', label=y_axis2)
+
+    # Add labels and a title
+    plt.xlabel('Time [sec]')
+    plt.title(f"{y_axis1} and {y_axis2} versus Time")
+
+    # Add legends
+    plt.legend()
+
+    # Show the plot
+    plt.show()
+
+def plot_four_columns(data_array1, data_array2, data_array3, data_array4, y_axis1, y_axis2, y_axis3, y_axis4):
+    """
+    Plot the data in the first column of each data array versus the data in the second column for all four datasets.
+
+    Parameters:
+    - data_array1: NumPy array with at least two columns.
+    - data_array2: NumPy array with at least two columns.
+    - data_array3: NumPy array with at least two columns.
+    - data_array4: NumPy array with at least two columns.
+    - y_axis1: Label for the y-axis of the first plot.
+    - y_axis2: Label for the y-axis of the second plot.
+    - y_axis3: Label for the y-axis of the third plot.
+    - y_axis4: Label for the y-axis of the fourth plot.
+
+    Returns:
+    - None
+    """
+    # Check if the arrays have at least two columns
+    if (
+        data_array1.shape[1] < 2 or
+        data_array2.shape[1] < 2 or
+        data_array3.shape[1] < 2 or
+        data_array4.shape[1] < 2
+    ):
+        print("Error: All input arrays must have at least two columns.")
+        return
+
+    # Extract the columns for plotting
+    x_values = data_array1[1:, 0]
+
+    y_values1 = data_array1[1:, 1]
+    y_values2 = data_array2[1:, 1]
+    y_values3 = data_array3[1:, 1]
+    y_values4 = data_array4[1:, 1]
+
+    # Plot the data for each array
+    plt.plot(x_values, y_values1, linestyle='-', color='b', label=y_axis1)
+    plt.plot(x_values, y_values2, linestyle='-', color='r', label=y_axis2)
+    # plt.plot(x_values, y_values3, linestyle='-', color='g', label=y_axis3)
+    plt.plot(x_values, y_values4, linestyle='-', color='purple', label=y_axis4)
+
+    # Add labels and a title
+    plt.xlabel('Time [sec]')
+    plt.title(f"{y_axis1}, {y_axis2}, {y_axis3}, and {y_axis4} versus Time")
+
+    # Add legends
     plt.legend()
 
     # Show the plot
@@ -106,7 +199,7 @@ def generate_large_impulse(perturbation_queue, impulse_time):
         while time.time() < end_time:
             # delta = time.time() - start_time
             # time.sleep(0.0000000001)
-            print(f"poo {time.time()}")
+            print(f"impulse duration: {end_time-time.time()}")
             # Put the generated impulse into the result queue
             perturbation_queue.put(direction_bool*perturbation)
 
@@ -123,10 +216,11 @@ def controller(model, data):
         # model.actuator_gainprm[0, 0] = 1 
         # print(str(data.sensordata[0]) + ", " + str(data.sensordata[1]))
         # print()
-
+        
+        error = data.sensordata[0] - ankle_position_setpoint 
         # GRAVITY COMPENSATION #
-        human_torque = K_p * \
-            (data.sensordata[0] - 5*np.pi/180 )
+        human_torque = K_p * error
+
         exo_torque = -1*(human_torque)
         data.ctrl[0] = human_torque
         # data.ctrl[1] = exo_torque
@@ -175,7 +269,7 @@ def controller(model, data):
         perturbation_datalogger_queue.put(x_perturbation)
     
     # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-    data.xfrc_applied[1] = [x_perturbation, 0, 0, 0., 0., 0.]
+    # data.xfrc_applied[1] = [x_perturbation, 0, 0, 0., 0., 0.]
     
 
     # Apply joint perturbations in Joint Space
@@ -325,11 +419,19 @@ context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 
 #############################
 
-#set initial conditions
-data.qpos[0]= 5*np.pi/180
-# data.qpos[1]=0
-# data.qpos[2]=-np.pi/6
-# data.qpos[3]=-np.pi/6
+# set initial joint velocity conditions
+data.qpos[0]= 0
+data.qpos[1]= 0          
+data.qpos[2]= 0  
+data.qpos[3]= 0
+
+# set initial joint position conditions
+data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
+# data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
+# data.qpos[2]=-np.pi/6   # slide / prismatic joint at top of body in z direction
+data.qpos[3]=-5*np.pi/180 # hinge joint at ankle
+
+
 
 # Set camera configuration
 cam.azimuth = 90.0
@@ -343,13 +445,14 @@ start = time.time()
 
 # parameter that sets length of impulse
 impulse_time = 0.25
-
+ankle_position_setpoint = 5*np.pi/180
 # precallocating Queues and arrays for data sharing and data collection
 perturbation_queue = Queue()
 control_log_queue = Queue()
 counter_queue = Queue()
 perturbation_datalogger_queue = Queue()
 control_log_array = np.empty((1,2))
+goal_position_data = np.empty((1,2))
 joint_position_data = np.empty((1,2))
 joint_velocity_data = np.empty((1,2))
 body_com_data = np.empty((1,4))
@@ -417,9 +520,9 @@ while not glfw.window_should_close(window):
             perturbation_data_array = np.vstack((perturbation_data_array, np.array([data.time, 0.]) ))
             
         # collect joint position and velocity data from simulation for visualization
-        joint_position_data = np.vstack((joint_position_data, np.array([data.time, data.qpos[ankle_joint_id]]) ))
-        joint_velocity_data = np.vstack((joint_velocity_data, np.array([data.time, data.qvel[ankle_joint_id]]) ))
-       
+        joint_position_data = np.vstack((joint_position_data, np.array([data.time, -180/np.pi*data.qpos[ankle_joint_id]]) ))
+        joint_velocity_data = np.vstack((joint_velocity_data, np.array([data.time, 180/np.pi*data.qvel[ankle_joint_id]]) ))
+        goal_position_data = np.vstack((goal_position_data, np.array([0,180/np.pi*ankle_position_setpoint]) ))
         # collect center of mass data for ID associated with human body element of XML model
         com = data.xipos[human_body_id]
         # collect 1x9 orientation vector for ID associated with human body element of XML model
@@ -472,10 +575,18 @@ perturbation_thread.join()
 # if control_flag:
     # torque_csv_file_path = "csv_files/recorded_torques_test.csv"
     # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
-#     plot_columns(control_log_array, 'Control Torque')
+# plot_columns(control_log_array, 'Control Torque')
 # else:
 #     plot_columns(recorded_torques, 'Control Torque')
-plot_columns(perturbation_data_array, "perturbation versus time")
-# plot_columns(joint_position_data, "Joint Position")
+# plot_columns(perturbation_data_array, "perturbation versus time")
+# plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
 # plot_columns(joint_velocity_data, "Joint Velocity")
+plot_four_columns(joint_position_data, 
+                  goal_position_data, 
+                  joint_velocity_data, 
+                  control_log_array,
+                  "joint actual pos.",
+                  "joint goal pos.",
+                  "joint vel.",
+                  "control torque")
 

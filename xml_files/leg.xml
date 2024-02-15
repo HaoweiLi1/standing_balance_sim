@@ -133,8 +133,8 @@
     <!-- SENSORS FOR THE ANKLE JOINTS -->
 	<sensor>
       <jointpos joint='joint_hinge'/>
-      <jointpos joint="ankle_y_right" />
-      <jointvel joint="ankle_y_right" noise ="0.1"/>
+      <!-- <jointpos joint="ankle_y_right" /> -->
+      <!-- <jointvel joint="ankle_y_right" noise ="0.1"/> -->
       <!-- <jointpos joint="ankle_x_right" noise="0.1"/>
       <jointvel joint="ankle_x_right" noise ="1"/> -->
 	</sensor>

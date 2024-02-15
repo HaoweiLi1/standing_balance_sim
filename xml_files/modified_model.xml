@@ -128,8 +128,8 @@
     
 	<sensor>
       <jointpos joint="joint_hinge" />
-      <jointpos joint="ankle_y_right" />
-      <jointvel joint="ankle_y_right" noise="0.1" />
+      
+      
       
 	</sensor>
 </mujoco>
