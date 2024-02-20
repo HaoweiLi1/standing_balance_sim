@@ -37,7 +37,8 @@
       
       <!-- SHIN GEOMETRY -->
       <default class="shin">
-        <geom size="0.045 0.045 1.78"/>  <!--pos="0 0 .07"/> -->
+        <!-- <geom size="0.03 0.5"/>  pos="0 0 .07"/> -->
+        <geom fromto="0 0 0.1 0 0 0" size = "0.03"/>
       </default>
 
 
@@ -46,11 +47,11 @@
         <geom type='capsule' size=".035" friction="0.9 0 0" solimp=".9 .99 .003" solref=".015 1" mass="2"/>
         <!-- LEFT HALF OF FOOT -->
         <default class="foot1">
-          <geom fromto="-.07 0 0 .14 0 0"/>
+          <geom fromto="-.07 -0.01 0 .14 0.01 0"/>
         </default>
         <!-- RIGHT HALF OF FOOT -->
         <default class="foot2">
-          <geom fromto="-.07 .02 0 .14 .02 0"/>
+          <geom fromto="-.14 -.01 0 .14 .01 0"/>
         </default>
        </default>
 
@@ -84,31 +85,31 @@
       <geom name="ground" size="0 0 .05" type="plane" material="grid" condim="3" friction='0.99 0.99 0.99' solimp=".9 .99 .003" solref=".015 1"/>
       
       <!-- LIGHT SETTING -->
-      <light name="spotlight" mode="targetbodycom" target="shin_right" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30"/>
+      <light name="spotlight" mode="targetbodycom" target="foot" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30"/>
       
       <!-- <body name = "plane_body" pos="0 0 1"> -->
         <!-- <geom type="plane" size="10 0.1 10" rgba="0.5 0.5 0.5 1"/> -->
         
         <!-- BODY FOR SHIN; CAN HAVE MAX 6-DOF -->
-        <body name="shin_right" pos="0 0 2.5">
+        <body name="foot" pos="0 0 0.035">
           <!-- <joint name="knee_right" class="knee"/> -->
-          <geom name="shin_geom" class="shin"/>
-
-          <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
-          <joint type="hinge" name="joint_hinge" axis="0 1 0"/>
       
           <!-- Create prismatic joints to constrain motion along the x and z directions -->
-          <joint type="slide" name="joint_slide_x" axis="1 0 0"/>
+          <joint name="rotation_dof" type="hinge" axis="0 -1 0"/>
+          <joint type="slide" name="joint_slide_x" axis="-1 0 0"/>
           <joint type="slide" name="joint_slide_z" axis="0 0 1"/>
-    
-
-          <!-- BODY FOR FOOT; AGAIN I THINK MAX OF 6-DOF PER BODY? -->
-          <body name="le_foot" pos="-0.01 0 -0.32">
-            <!-- add joints and geometries for left and right halves of foot -->
-            <!-- <joint name="ankle_x_right" class="ankle_x" axis="1 0 .5"/> -->
-            <joint name="ankle_y_right" class="ankle_y"/>
+  
+          
             <!-- <geom name="foot1_right" class="foot1"/> -->
-            <geom name="foot1_right" class="foot2"/>
+          <geom name="foot1_right" class="foot2"/>
+          
+          <body name="shin_body">
+          
+          
+          <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
+            <joint type="hinge" name="ankle_hinge" axis="0 -1 0"/>
+            <geom name="shin_geom" class="shin"/>
+
           </body>
 
           <!-- <body name='big_toe' pos="0.1 0 -0.39">
@@ -126,15 +127,16 @@
       <!-- <motor joint="ankle_x_right" name="ankle_actuator_x" gear="20"/>
       <position name="position_servo_x_right" joint="ankle_x_right" kp="10"/>
 	    <velocity name="velocity_servo_x_right" joint="ankle_x_right" kv="0"/> -->
-      <!-- <motor joint="shin_right" name="shin_actuator"/> -->
-      <motor joint="ankle_y_right" name="ankle_actuator_y" gear="144"/>
+      
+      <motor joint="ankle_hinge" name="shin_actuator" gear="40"/>
+      <!-- <motor joint="ankle_y_right" name="ankle_actuator_y" gear="144"/> -->
       <!-- <motor joint="ankle_y_right" name="exo_ankle_actuator_y" gear="144"/> -->
 	</actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->
 	<sensor>
-      <!-- <jointpos joint='joint_hinge'/> -->
-      <jointpos joint="ankle_y_right" />
+      <jointpos joint='ankle_hinge'/>
+      <!-- <jointpos joint="ankle_y_right" /> -->
       <!-- <jointvel joint="ankle_y_right" noise ="0.1"/> -->
       <!-- <jointpos joint="ankle_x_right" noise="0.1"/>
       <jointvel joint="ankle_x_right" noise ="1"/> -->

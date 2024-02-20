@@ -5,6 +5,7 @@ import os
 from typing import Callable, Optional, Union, List
 import scipy.linalg
 import mediapy as media
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import threading
@@ -13,18 +14,36 @@ from queue import Queue
 import xml.etree.ElementTree as ET
 import imageio
 
-xml_path = 'xml_files\leg.xml'
+xml_path = 'xml_files\leg copy.xml'
 simend = 5
 K_p = 0
 
+plt.rcParams['text.usetex'] = True
+
+# plt.rcParams.update({
+#     'text.usetex': True,
+#     'font.family': 'sans-serif',  # You can choose 'serif', 'sans-serif', or other font families
+#     'font.sans-serif': 'Helvetica',  # Specify the font you want to use
+#     'axes.labelsize': 12,
+#     'font.size': 12,
+#     'legend.fontsize': 10,
+#     'xtick.labelsize': 10,
+#     'ytick.labelsize': 10,
+#     })
+
+mpl.rcParams.update(mpl.rcParamsDefault)
+
 def plot_3d_pose_trajectory(positions, orientations):
+    
+    
+    
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('Body Center of Mass Pose Trajectory')
+    ax.set_xlabel('$X$')
+    ax.set_ylabel('$Y$')
+    ax.set_zlabel('$Z$')
+    ax.set_title('$Body\;Center\;of\;Mass\;Trajectory}$')
 
     # Plot the trajectory
     ax.plot(positions[1:, 1], positions[1:, 2], positions[1:, 3], marker=".",color='k')
@@ -43,8 +62,8 @@ def plot_3d_pose_trajectory(positions, orientations):
                   orientations[i][2], orientations[i][5], orientations[i][8],
                   color='b', length=0.1)
     ax.set_ylim(-0.5,0.5)
-    legend_entries = ["Body Cartesian Position", "Body X-Orientation", "Body Y-Orientation", "Body Z-Orientation"]
-    plt.legend(labels=legend_entries)
+    legend_entries = ["COM Pos.", "$\\theta_x$", "$\\theta_y$", "$\\theta_z$"]
+    # plt.legend(labels=legend_entries)
     plt.show()
 
 def plot_columns(data_array, y_axis):
@@ -70,9 +89,9 @@ def plot_columns(data_array, y_axis):
     plt.plot(x_values, y_values, linestyle='-', color='b', label=y_axis)
 
     # Add labels and a title
-    plt.xlabel('Time [sec]')
+    plt.xlabel('$\\t{Time [sec]}$')
     plt.ylabel(y_axis)
-    plt.title(y_axis + " versus Time")
+    plt.title(y_axis + "$\\bf{,\;versus\;Time, \\it{t}}$")
 
     # Add a legend
     # plt.legend()
@@ -164,7 +183,7 @@ def plot_four_columns(data_array1, data_array2, data_array3, data_array4, y_axis
     plt.plot(x_values, y_values4, linestyle='-', color='purple', label=y_axis4)
 
     # Add labels and a title
-    plt.xlabel('Time [sec]')
+    plt.xlabel('$\textnormal{Time [sec]}$')
     plt.title(f"{y_axis1}, {y_axis2}, {y_axis3}, and {y_axis4} versus Time")
 
     # Add legends
@@ -217,7 +236,7 @@ def controller(model, data):
         # print(str(data.sensordata[0]) + ", " + str(data.sensordata[1]))
         # print()
         
-        error = data.sensordata[0] - ankle_position_setpoint 
+        error = ankle_position_setpoint - data.sensordata[0]
         # GRAVITY COMPENSATION #
         human_torque = K_p * error
 
@@ -269,7 +288,7 @@ def controller(model, data):
         perturbation_datalogger_queue.put(x_perturbation)
     
     # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-    # data.xfrc_applied[1] = [x_perturbation, 0, 0, 0., 0., 0.]
+    # data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
     
 
     # Apply joint perturbations in Joint Space
@@ -342,27 +361,64 @@ m_feet, m_body, l_COM, l_foot, a, K_p = calculate_kp_and_geom \
                                         (M_total, H_total)
 
 ## SETTING XML GEOMETRIES TO MATCH LITERATURE VALUES ###
+# for geom in root.iter('geom'):
+#         if geom.get('name') == "shin_geom":
+
+#             geom.set('fromto', f'0 0 0 0 0 {-H_total}')
+#             # geom.set('pos', f'0 0 {H_total-l_COM}')
+#             geom.set('mass', str(m_body))
+            
+#         elif geom.get('name') == "foot1_right":
+
+#             geom.set('fromto', f'0 .02 0 {l_foot} .02 0')
+#             geom.set('mass', str(m_feet))
+
+# for body in root.iter('body'):
+#         if body.get('name') == "le_foot":
+#              body.set('pos',  f'-{a} 0 -{H_total+0.02}')
+# foot_body_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_BODY, "shin_body")
+# foot_com = data.xipos[]
+
 for geom in root.iter('geom'):
         if geom.get('name') == "shin_geom":
 
-            geom.set('fromto', f'0 0 0 0 0 {-H_total}')
+            geom.set('fromto', f'0 0 {H_total} 0 0 0')
             # geom.set('pos', f'0 0 {H_total-l_COM}')
             geom.set('mass', str(m_body))
-            
+            # geom.set('size', 0.05)
+
         elif geom.get('name') == "foot1_right":
 
             geom.set('fromto', f'0 .02 0 {l_foot} .02 0')
             geom.set('mass', str(m_feet))
 
 for body in root.iter('body'):
-        if body.get('name') == "le_foot":
-             body.set('pos',  f'-{a} 0 -{H_total+0.02}')
+        if body.get('name') == "foot":
+             body.set('pos',  f'0 0 0.035')
 
-tree.write('xml_files\modified_model.xml')
+        elif body.get('name') == "shin_body":
+            # size = float(body.get('size'))
+            size = a
+            body.set('pos', f'{size} 0 0.')
+
+for joint in root.iter('joint'):
+        if joint.get('name') == "ankle_hinge":
+            joint.set("pos", f"{a} 0 0")
+
+        elif joint.get('name') == "rotation_dof":
+            joint.set('pos', f'{l_foot} 0 0.035')
+
+        elif joint.get('name') == "joint_slide_x":
+            joint.set('pos', f"{l_foot/2} 0 0.035")
+
+        elif joint.get('name') == "joint_slide_z":
+            joint.set('pos', f"{l_foot/2} 0 0.035")
+
+tree.write('xml_files\modified_model_new.xml')
 ########
 
 #get the full path
-modified_xml_path = 'xml_files\modified_model.xml'
+modified_xml_path = 'xml_files\modified_model_new.xml'
 script_directory = os.path.dirname(os.path.abspath(__file__))
 xml_path = os.path.join(script_directory, xml_path)
 model = mj.MjModel.from_xml_path(modified_xml_path)  # MuJoCo XML model
@@ -380,12 +436,18 @@ glfw.swap_interval(1)
 # initialize visualization data structures
 mj.mjv_defaultCamera(cam)
 mj.mjv_defaultOption(opt)
-opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
+# opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
 opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
 opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
-# opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
+opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
 opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = True
 opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
+# opt.flags[mj.mjtLabel.mjLABEL_JOINT] = True
+# opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
+opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
+# opt.flags[mj.mjtFrame.mjFRAME_CONTACT] = True
+# opt.flags[mj.mjtFrame.mjFRAME_BODY] = True
+# opt.mjVIS_COM = True
 
 # tweak map parameters for visualization
 model.vis.map.force = 0.1 # scaling parameter for force vector's length
@@ -396,6 +458,9 @@ model.vis.scale.contactwidth = 0.05 # width of the floor contact point
 model.vis.scale.contactheight = 0.01 # height of the floor contact point
 model.vis.scale.forcewidth = 0.03 # width of the force vector
 model.vis.scale.com = 0.2 # com radius
+model.vis.scale.actuatorwidth = 0.1 # diameter of visualized actuator
+model.vis.scale.actuatorlength = 0.1 # thickness of visualized actuator
+model.vis.scale.jointwidth = 0.025 # diameter of joint arrows
 
 # tweaking colors of stuff
 model.vis.rgba.contactforce = np.array([0.7, 0., 0., 0.5], dtype=np.float32)
@@ -420,18 +485,17 @@ context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 #############################
 
 # set initial joint velocity conditions
-data.qpos[0]= 0
-data.qpos[1]= 0          
-data.qpos[2]= 0  
-data.qpos[3]= 0
+data.qvel[0]= 0
+data.qvel[1]= 0          
+data.qvel[2]= 0  
+data.qvel[3]= 0
 
 # set initial joint position conditions
-data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
+# data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
 # data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
 # data.qpos[2]=-np.pi/6   # slide / prismatic joint at top of body in z direction
 data.qpos[3]=-5*np.pi/180 # hinge joint at ankle
-
-
+# 
 
 # Set camera configuration
 cam.azimuth = 90.0
@@ -445,7 +509,7 @@ start = time.time()
 
 # parameter that sets length of impulse
 impulse_time = 0.25
-ankle_position_setpoint = 5*np.pi/180
+ankle_position_setpoint = -5*np.pi/180
 # precallocating Queues and arrays for data sharing and data collection
 perturbation_queue = Queue()
 control_log_queue = Queue()
@@ -460,10 +524,10 @@ body_orientation_data = np.empty((1,9))
 perturbation_data_array = np.empty((1,2))
 
 # ID number for the ankle joint, used for data collection
-ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_y_right")
+ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
 
 # ID number for the body geometry
-human_body_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_BODY, "shin_right")
+human_body_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_BODY, "shin_body")
 
 # Define the video file parameters
 video_file = 'pose_trajectory.mp4'
@@ -497,7 +561,7 @@ while not glfw.window_should_close(window):
     simstart = data.time
 
     while (data.time - simstart < 1.0/60.0):
-        
+        print(f'sensor data: {data.sensordata[0]}')
         # if we aren't using the PD control mode and instead using prerecorded data, then
         # we should set the control input to the nth value of the recorded torque array
         if not control_flag:
@@ -575,18 +639,18 @@ perturbation_thread.join()
 # if control_flag:
     # torque_csv_file_path = "csv_files/recorded_torques_test.csv"
     # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
-# plot_columns(control_log_array, 'Control Torque')
-# else:
-#     plot_columns(recorded_torques, 'Control Torque')
+plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
+# # else:
+# #     plot_columns(recorded_torques, 'Control Torque')
 # plot_columns(perturbation_data_array, "perturbation versus time")
 # plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
 # plot_columns(joint_velocity_data, "Joint Velocity")
-plot_four_columns(joint_position_data, 
-                  goal_position_data, 
-                  joint_velocity_data, 
-                  control_log_array,
-                  "joint actual pos.",
-                  "joint goal pos.",
-                  "joint vel.",
-                  "control torque")
+# plot_four_columns(joint_position_data, 
+#                   goal_position_data, 
+#                   joint_velocity_data, 
+#                   control_log_array,
+#                   "joint actual pos.",
+#                   "joint goal pos.",
+#                   "joint vel.",
+#                   "control torque")
 

@@ -37,7 +37,8 @@
       
       
       <default class="shin">
-        <geom size="0.03 0.5" />  
+        
+        <geom fromto="0 0 0.1 0 0 0" size="0.03" />
       </default>
 
 
@@ -94,9 +95,9 @@
           
       
           
-          <joint name="rotation_dof" type="hinge" pos="0 0 1.0234999999999999" axis="0 1 0" />
-          <joint type="slide" name="joint_slide_x" axis="1 0 0" pos="0 0 1.0234999999999999" />
-          <joint type="slide" name="joint_slide_z" axis="0 0 1" pos="0 0 1.0234999999999999" />
+          <joint name="rotation_dof" type="hinge" axis="0 -1 0" pos="0.27056 0 0.035" />
+          <joint type="slide" name="joint_slide_x" axis="-1 0 0" pos="0.13528 0 0.035" />
+          <joint type="slide" name="joint_slide_z" axis="0 0 1" pos="0.13528 0 0.035" />
   
           
             
@@ -106,8 +107,8 @@
           
           
           
-            <joint type="hinge" name="ankle_hinge" axis="0 1 0" pos="0.051406400000000005 0 0" />
-            <geom name="shin_geom" class="shin" fromto="0 0 0 0 0 1.78" mass="77.68" />
+            <joint type="hinge" name="ankle_hinge" axis="0 -1 0" pos="0.051406400000000005 0 0" />
+            <geom name="shin_geom" class="shin" fromto="0 0 1.78 0 0 0" mass="77.68" />
 
           </body>
 
@@ -120,6 +121,7 @@
 	
     
 	<actuator>
+      
       
       <motor joint="ankle_hinge" name="shin_actuator" gear="40" />
       
