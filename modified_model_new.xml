@@ -125,7 +125,7 @@
       
       <motor joint="ankle_hinge" name="shin_actuator" gear="40" />
       
-      
+      <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40" />
 	</actuator>
 
     

@@ -14,7 +14,7 @@ from queue import Queue
 import xml.etree.ElementTree as ET
 import imageio
 
-xml_path = 'xml_files\leg copy.xml'
+xml_path = 'initial_humanoid.xml'
 simend = 5
 K_p = 0
 
@@ -414,11 +414,11 @@ for joint in root.iter('joint'):
         elif joint.get('name') == "joint_slide_z":
             joint.set('pos', f"{l_foot/2} 0 0.035")
 
-tree.write('xml_files\modified_model_new.xml')
+tree.write('modified_model_new.xml')
 ########
 
 #get the full path
-modified_xml_path = 'xml_files\modified_model_new.xml'
+modified_xml_path = 'modified_model_new.xml'
 script_directory = os.path.dirname(os.path.abspath(__file__))
 xml_path = os.path.join(script_directory, xml_path)
 model = mj.MjModel.from_xml_path(modified_xml_path)  # MuJoCo XML model
@@ -432,6 +432,9 @@ glfw.init()
 window = glfw.create_window(1200, 900, "Demo", None, None)
 glfw.make_context_current(window)
 glfw.swap_interval(1)
+
+torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
+test = np.loadtxt(torque_csv_file_path, delimiter=',')
 
 # initialize visualization data structures
 mj.mjv_defaultCamera(cam)
@@ -546,7 +549,7 @@ if control_flag:
     mj.set_mjcb_control(controller)
 else:
     # use prerecorded torque values if this is the case
-    torque_csv_file_path = "csv_files\recorded_torques.csv"
+    torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
     recorded_torques = np.loadtxt(torque_csv_file_path, delimiter=',')
     # print(recorded_torques)
 # start the thread that generates the perturbation impulses
@@ -637,7 +640,7 @@ perturbation_thread.join()
 
 # plot_3d_pose_trajectory(body_com_data, body_orientation_data)
 # if control_flag:
-    # torque_csv_file_path = "csv_files/recorded_torques_test.csv"
+    # torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
     # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
 plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
 # # else:

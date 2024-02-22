@@ -130,7 +130,7 @@
       
       <motor joint="ankle_hinge" name="shin_actuator" gear="40"/>
       <!-- <motor joint="ankle_y_right" name="ankle_actuator_y" gear="144"/> -->
-      <!-- <motor joint="ankle_y_right" name="exo_ankle_actuator_y" gear="144"/> -->
+      <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/>
 	</actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->

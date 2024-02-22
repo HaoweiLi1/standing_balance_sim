@@ -25,7 +25,7 @@ def controller(model, data):
     if actuator_type == "torque":
         model.actuator_gainprm[0, 0] = 189
         data.ctrl[0] = -10 * \
-            (data.sensordata[0] - 0.0) - \
+            (data.sensordata[0] - np.pi/2) - \
             1 * (data.sensordata[1] - 0.0)
     elif actuator_type == "servo":
         kp = 10.0
