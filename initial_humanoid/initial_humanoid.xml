@@ -28,7 +28,7 @@
 
   <!-- SECTION TO DEFINE GEOMETRIES AND JOINTS -->
   <default>
-    <motor ctrlrange="-1 1" ctrllimited="true"/>
+    <!-- <motor ctrlrange="-1 1" ctrllimited="true"/> -->
     <default class="body">
 
       <!-- geoms -->

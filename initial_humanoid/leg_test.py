@@ -14,9 +14,35 @@ from queue import Queue
 import xml.etree.ElementTree as ET
 import imageio
 
-xml_path = 'initial_humanoid.xml'
-simend = 5
-K_p = 0
+xml_path = 'initial_humanoid.xml'     # XML file path
+simend = 15                            # duration of simulation
+K_p = 1                               # predefining proportional gain for controller 
+impulse_thread_exit_flag = False      # Bool used to stop impulse thread from running
+control_mode = "torque"                       # Set the control type to use - presently just proportional torque controller
+ankle_position_setpoint = -5*np.pi/180
+
+perturbation_time = 0.25                     # parameter that sets pulse width of impulse
+perturbation_magnitude = 10             # size of impulse
+perturbation_period = 5                      # period at which impulse occurs
+
+# precallocating arrays and queues for data sharing and data collection
+control_log_array = np.empty((1,2))
+goal_position_data = np.empty((1,2))
+joint_position_data = np.empty((1,2))
+joint_velocity_data = np.empty((1,2))
+body_com_data = np.empty((1,4))
+body_orientation_data = np.empty((1,9))
+perturbation_data_array = np.empty((1,2))
+perturbation_queue = Queue()
+control_log_queue = Queue()
+counter_queue = Queue()
+perturbation_datalogger_queue = Queue()
+
+# Define parameters for creating and storing an MP4 file of the rendered simulation
+video_file = 'pose_trajectory.mp4'
+video_fps = 60  # Frames per second
+frames = [] # list to store frames
+desired_viewport_height = 912
 
 plt.rcParams['text.usetex'] = True
 
@@ -192,7 +218,7 @@ def plot_four_columns(data_array1, data_array2, data_array3, data_array4, y_axis
     # Show the plot
     plt.show()
 
-def generate_large_impulse(perturbation_queue, impulse_time):
+def generate_large_impulse(perturbation_queue, impulse_time, perturbation_magnitude, impulse_period):
     
     while not impulse_thread_exit_flag: # run continuously once we start a thread 
                 # for this function
@@ -201,11 +227,11 @@ def generate_large_impulse(perturbation_queue, impulse_time):
         while not perturbation_queue.empty():
             perturbation_queue.get()
 
-        wait_time = np.random.uniform(1,2)
+        wait_time = np.random.uniform(impulse_period,impulse_period+1)
         time.sleep(wait_time)
         
         # Generate a large impulse
-        perturbation = np.random.uniform(400, 401)
+        perturbation = np.random.uniform(perturbation_magnitude, perturbation_magnitude+10)
 
         # this will generate either -1 or 1
         direction_bool = np.random.choice([-1,1])
@@ -229,7 +255,7 @@ def controller(model, data):
     otherwise it doesn't seem to run properly
     """
 
-    if actuator_type == "torque":
+    if control_mode == "torque":
         # model.actuator_gainprm[1, 0] = 1
         # print(model.actuator_gainprm)
         # model.actuator_gainprm[0, 0] = 1 
@@ -250,7 +276,7 @@ def controller(model, data):
         # print(model.actuator_gainprm)
         # pass
         
-    elif actuator_type == "servo":
+    elif control_mode == "servo":
         kp = 100.0
         # model.actuator_gainrpm are the gain parameters for the actuators
         # Each N*3 rows of model.actuator_gainrpm represents the gains for
@@ -288,54 +314,12 @@ def controller(model, data):
         perturbation_datalogger_queue.put(x_perturbation)
     
     # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-    # data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
+    data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
     
-
     # Apply joint perturbations in Joint Space
     # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
     # data.qfrc_applied[3] = rx_perturbation
     # data.qfrc_applied[4] = ry_perturbation
-
-    ###############################################################
-    ###############################################################
-    
-    # data.xfrc_applied specifies the Cartesion Space forces applied to the
-    # BODIES' Center of Gravities in our model. 
-
-    # Each entry of data.xfrc_applied represents the forces and torques
-    # applied to distinct bodies in our model. 
-    # The structure is an R6 vector:
-    # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-
-    # Indices of data.xfrc_applied and relation to model bodies:
-    # i = 0 ; Worldframe body --> Doesn't appear to move when subjected to forces?
-    # i = 1 ; Shin body
-    # i = 2 ; Foot body
-
-    ###############################################################
-    ###############################################################
-    
-    # data.qfrc_applied represents the Joint Space forces applied to the
-    # JOINTS of our model
-
-    # Each entry of data.qfrc_applied represents a degree of freedom
-    # of the joints. Since we have different types of joints in our model
-    # the structure of data.qfrc_applied is less rigidly defined than
-    # data.xfrc_applied.
-
-    # Indies of data.qfrc_applied and relation to model joints:
-    # First joint is the knee
-    # i = 0 ; knee joint's associated body x coord
-    # i = 1 ; knee joint's associated body y coord
-    # i = 2 ; knee joint's associated body z coord
-    # i = 3 ; Knee R_x
-    # i = 4 ; Knee R_y
-    # i = 5 ; Knee R_z
-    # i = 6 ; X-axis ankle rotation
-    # i = 7 ; Y-axis ankle rotation
-
-    ###############################################################
-    ###############################################################
 
 def calculate_kp_and_geom(weight, height):
     
@@ -350,7 +334,6 @@ def calculate_kp_and_geom(weight, height):
 
     return m_feet, m_body, l_COM, l_foot, a, K_p
 
-    
 tree = ET.parse(xml_path)
 root = tree.getroot()
 # MODIFY THE XML FILE AND INSERT THE MASS AND LENGTH
@@ -359,25 +342,6 @@ M_total = 80 # kg
 H_total = 1.78 # meters
 m_feet, m_body, l_COM, l_foot, a, K_p = calculate_kp_and_geom \
                                         (M_total, H_total)
-
-## SETTING XML GEOMETRIES TO MATCH LITERATURE VALUES ###
-# for geom in root.iter('geom'):
-#         if geom.get('name') == "shin_geom":
-
-#             geom.set('fromto', f'0 0 0 0 0 {-H_total}')
-#             # geom.set('pos', f'0 0 {H_total-l_COM}')
-#             geom.set('mass', str(m_body))
-            
-#         elif geom.get('name') == "foot1_right":
-
-#             geom.set('fromto', f'0 .02 0 {l_foot} .02 0')
-#             geom.set('mass', str(m_feet))
-
-# for body in root.iter('body'):
-#         if body.get('name') == "le_foot":
-#              body.set('pos',  f'-{a} 0 -{H_total+0.02}')
-# foot_body_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_BODY, "shin_body")
-# foot_com = data.xipos[]
 
 for geom in root.iter('geom'):
         if geom.get('name') == "shin_geom":
@@ -394,7 +358,7 @@ for geom in root.iter('geom'):
 
 for body in root.iter('body'):
         if body.get('name') == "foot":
-             body.set('pos',  f'0 0 0.035')
+            body.set('pos',  f'0 0 0.035')
 
         elif body.get('name') == "shin_body":
             # size = float(body.get('size'))
@@ -432,9 +396,6 @@ glfw.init()
 window = glfw.create_window(1200, 900, "Demo", None, None)
 glfw.make_context_current(window)
 glfw.swap_interval(1)
-
-torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
-test = np.loadtxt(torque_csv_file_path, delimiter=',')
 
 # initialize visualization data structures
 mj.mjv_defaultCamera(cam)
@@ -476,55 +437,23 @@ model.vis.rgba.com = np.array([1.,0.647,0.,0.5])
 scene = mj.MjvScene(model, maxgeom=10000)
 context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 
-### IDK WHAT THIS STUFF DOES EXACTLY, IT IS AN ARTIFACT FROM
-### THE MUJOCO TUTORIAL I USED TO START THIS SCRIPT
-
-# install GLFW mouse and keyboard callbacks
-# glfw.set_key_callback(window, keyboard)
-# glfw.set_cursor_pos_callback(window, mouse_move)
-# glfw.set_mouse_button_callback(window, mouse_button)
-# glfw.set_scroll_callback(window, scroll)
-
-#############################
-
-# set initial joint velocity conditions
-data.qvel[0]= 0
-data.qvel[1]= 0          
-data.qvel[2]= 0  
-data.qvel[3]= 0
-
-# set initial joint position conditions
-# data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
-# data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
-# data.qpos[2]=-np.pi/6   # slide / prismatic joint at top of body in z direction
-data.qpos[3]=-5*np.pi/180 # hinge joint at ankle
-# 
-
 # Set camera configuration
 cam.azimuth = 90.0
 cam.distance = 5.0
 cam.elevation = -5
 cam.lookat = np.array([0.012768, -0.000000, 1.254336])
 
-# Use torque control mode
-actuator_type = "torque"
-start = time.time()
+# INITIAL CONDITIONS FOR JOINT POSITIONS
+data.qvel[0]= 0
+data.qvel[1]= 0          
+data.qvel[2]= 0  
+data.qvel[3]= 0
 
-# parameter that sets length of impulse
-impulse_time = 0.25
-ankle_position_setpoint = -5*np.pi/180
-# precallocating Queues and arrays for data sharing and data collection
-perturbation_queue = Queue()
-control_log_queue = Queue()
-counter_queue = Queue()
-perturbation_datalogger_queue = Queue()
-control_log_array = np.empty((1,2))
-goal_position_data = np.empty((1,2))
-joint_position_data = np.empty((1,2))
-joint_velocity_data = np.empty((1,2))
-body_com_data = np.empty((1,4))
-body_orientation_data = np.empty((1,9))
-perturbation_data_array = np.empty((1,2))
+# INITIAL CONDITIONS FOR JOINT VELOCITIES
+# data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
+# data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
+# data.qpos[2]=-np.pi/6   # slide / prismatic joint at top of body in z direction
+data.qpos[3]=-5*np.pi/180 # hinge joint at ankle
 
 # ID number for the ankle joint, used for data collection
 ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
@@ -532,11 +461,7 @@ ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
 # ID number for the body geometry
 human_body_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_BODY, "shin_body")
 
-# Define the video file parameters
-video_file = 'pose_trajectory.mp4'
-video_fps = 60  # Frames per second
-frames = [] # list to store frames
-desired_viewport_height = 912
+
 
 recorded_control_counter = 0
 
@@ -552,12 +477,13 @@ else:
     torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
     recorded_torques = np.loadtxt(torque_csv_file_path, delimiter=',')
     # print(recorded_torques)
+
 # start the thread that generates the perturbation impulses
 impulse_thread_exit_flag = False
 perturbation_thread = threading.Thread \
     (target=generate_large_impulse, 
-     daemon=True, 
-     args=(perturbation_queue,impulse_time) )
+    daemon=True, 
+    args=(perturbation_queue,perturbation_time, perturbation_magnitude, perturbation_period) )
 perturbation_thread.start()
 
 while not glfw.window_should_close(window):
@@ -611,7 +537,7 @@ while not glfw.window_should_close(window):
 
     # Update scene and render
     mj.mjv_updateScene(model, data, opt, None, cam,
-                       mj.mjtCatBit.mjCAT_ALL.value, scene)
+                    mj.mjtCatBit.mjCAT_ALL.value, scene)
     mj.mjr_render(viewport, scene, context)
 
     # Capture the frame
