@@ -22,8 +22,8 @@ control_mode = "torque"                       # Set the control type to use - pr
 ankle_position_setpoint = -5*np.pi/180
 
 perturbation_time = 0.25                     # parameter that sets pulse width of impulse
-perturbation_magnitude = 10             # size of impulse
-perturbation_period = 5                      # period at which impulse occurs
+perturbation_magnitude = 300             # size of impulse
+perturbation_period = 2                      # period at which impulse occurs
 
 # precallocating arrays and queues for data sharing and data collection
 control_log_array = np.empty((1,2))
@@ -358,7 +358,7 @@ for geom in root.iter('geom'):
 
 for body in root.iter('body'):
         if body.get('name') == "foot":
-            body.set('pos',  f'0 0 0.035')
+            body.set('pos',  f'0 0 0.038')
 
         elif body.get('name') == "shin_body":
             # size = float(body.get('size'))
@@ -443,13 +443,13 @@ cam.distance = 5.0
 cam.elevation = -5
 cam.lookat = np.array([0.012768, -0.000000, 1.254336])
 
-# INITIAL CONDITIONS FOR JOINT POSITIONS
-data.qvel[0]= 0
-data.qvel[1]= 0          
-data.qvel[2]= 0  
-data.qvel[3]= 0
-
 # INITIAL CONDITIONS FOR JOINT VELOCITIES
+data.qvel[0]= 0              # hinge joint at top of body
+data.qvel[1]= 0              # slide / prismatic joint at top of body in x direction
+data.qvel[2]= 0              # slide / prismatic joint at top of body in z direction
+data.qvel[3]= 0.4           # hinge joint at ankle
+
+# INITIAL CONDITIONS FOR JOINT POSITION
 # data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
 # data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
 # data.qpos[2]=-np.pi/6   # slide / prismatic joint at top of body in z direction
@@ -460,8 +460,6 @@ ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
 
 # ID number for the body geometry
 human_body_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_BODY, "shin_body")
-
-
 
 recorded_control_counter = 0
 
@@ -484,7 +482,7 @@ perturbation_thread = threading.Thread \
     (target=generate_large_impulse, 
     daemon=True, 
     args=(perturbation_queue,perturbation_time, perturbation_magnitude, perturbation_period) )
-perturbation_thread.start()
+# perturbation_thread.start()
 
 while not glfw.window_should_close(window):
     simstart = data.time
@@ -562,7 +560,7 @@ while not glfw.window_should_close(window):
 glfw.terminate()
 
 impulse_thread_exit_flag = True
-perturbation_thread.join()
+# perturbation_thread.join()
 
 # plot_3d_pose_trajectory(body_com_data, body_orientation_data)
 # if control_flag:

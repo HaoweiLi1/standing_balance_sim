@@ -1,4 +1,4 @@
-<mujoco model="Leg">
+<mujoco model="initial_humanoid">
   
   <option gravity="0 0 -9.81">
     
@@ -24,11 +24,12 @@
     <material name="body" texture="body" texuniform="true" rgba="0.8 0.6 .4 1" />
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4" />
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2" />
+    <mesh name="tetrahedron" vertex="0 0 0  1 0 0  0 1 0  0 0 1" />
   </asset>
 
   
   <default>
-    
+    <motor ctrlrange="-3 3" ctrllimited="true" />
     <default class="body">
 
       
@@ -91,7 +92,7 @@
         
         
         
-        <body name="foot" pos="0 0 0.035">
+        <body name="foot" pos="0 0 0.038">
           
       
           
