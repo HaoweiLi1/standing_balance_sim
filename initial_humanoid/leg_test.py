@@ -19,7 +19,7 @@ simend = 15                            # duration of simulation
 K_p = 1                               # predefining proportional gain for controller 
 impulse_thread_exit_flag = False      # Bool used to stop impulse thread from running
 control_mode = "torque"                       # Set the control type to use - presently just proportional torque controller
-ankle_position_setpoint = -5*np.pi/180
+ankle_position_setpoint = 2.5*np.pi/180
 
 perturbation_time = 0.25                     # parameter that sets pulse width of impulse
 perturbation_magnitude = 300             # size of impulse
@@ -342,6 +342,7 @@ M_total = 80 # kg
 H_total = 1.78 # meters
 m_feet, m_body, l_COM, l_foot, a, K_p = calculate_kp_and_geom \
                                         (M_total, H_total)
+h_f = H_total/10 # temporary foot height
 
 for geom in root.iter('geom'):
         if geom.get('name') == "shin_geom":
@@ -355,28 +356,36 @@ for geom in root.iter('geom'):
 
             geom.set('fromto', f'0 .02 0 {l_foot} .02 0')
             geom.set('mass', str(m_feet))
+        
+        elif geom.get('name') == "foot":
+            geom.set('pos', f'{0} 0')
 
 for body in root.iter('body'):
         if body.get('name') == "foot":
-            body.set('pos',  f'0 0 0.038')
+            poo = body.get('pos')
+            print(f'pos: {poo}')
+            body.set('pos',  f'0 0 0.1')
 
         elif body.get('name') == "shin_body":
             # size = float(body.get('size'))
-            size = a
-            body.set('pos', f'{size} 0 0.')
+            body.set('pos', f'{l_foot/2-a} 0 {h_f}')
 
 for joint in root.iter('joint'):
         if joint.get('name') == "ankle_hinge":
-            joint.set("pos", f"{a} 0 0")
+            joint.set("pos", f"0 0 0")
 
         elif joint.get('name') == "rotation_dof":
-            joint.set('pos', f'{l_foot} 0 0.035')
+            joint.set('pos', f'-{l_foot} 0 0.035')
 
         elif joint.get('name') == "joint_slide_x":
             joint.set('pos', f"{l_foot/2} 0 0.035")
 
         elif joint.get('name') == "joint_slide_z":
             joint.set('pos', f"{l_foot/2} 0 0.035")
+
+for mesh in root.iter('mesh'):
+    if mesh.get('name') == "tetrahedron":
+        mesh.set('vertex', f"{-l_foot/2} 0 0  {l_foot/2} 0 0  0 -0.035 0  0 0.035 0  {l_foot/2-a} 0 {h_f}")
 
 tree.write('modified_model_new.xml')
 ########
@@ -401,14 +410,14 @@ glfw.swap_interval(1)
 mj.mjv_defaultCamera(cam)
 mj.mjv_defaultOption(opt)
 # opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
-opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
-opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
+# opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
+# opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
 opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
 opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = True
 opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
 # opt.flags[mj.mjtLabel.mjLABEL_JOINT] = True
 # opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
-opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
+# opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
 # opt.flags[mj.mjtFrame.mjFRAME_CONTACT] = True
 # opt.flags[mj.mjtFrame.mjFRAME_BODY] = True
 # opt.mjVIS_COM = True
@@ -447,13 +456,13 @@ cam.lookat = np.array([0.012768, -0.000000, 1.254336])
 data.qvel[0]= 0              # hinge joint at top of body
 data.qvel[1]= 0              # slide / prismatic joint at top of body in x direction
 data.qvel[2]= 0              # slide / prismatic joint at top of body in z direction
-data.qvel[3]= 0.4           # hinge joint at ankle
+# data.qvel[3]= 0.4           # hinge joint at ankle
 
 # INITIAL CONDITIONS FOR JOINT POSITION
 # data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
 # data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
 # data.qpos[2]=-np.pi/6   # slide / prismatic joint at top of body in z direction
-data.qpos[3]=-5*np.pi/180 # hinge joint at ankle
+data.qpos[3]=2.5*np.pi/180 # hinge joint at ankle
 
 # ID number for the ankle joint, used for data collection
 ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
@@ -470,10 +479,10 @@ if control_flag:
     # UNDERSTAND WHAT IS GOING ON HERE BUT IT DOES SEEM
     # TO WORK.
     mj.set_mjcb_control(controller)
-else:
-    # use prerecorded torque values if this is the case
-    torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
-    recorded_torques = np.loadtxt(torque_csv_file_path, delimiter=',')
+# else:
+#     # use prerecorded torque values if this is the case
+#     torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
+#     recorded_torques = np.loadtxt(torque_csv_file_path, delimiter=',')
     # print(recorded_torques)
 
 # start the thread that generates the perturbation impulses
@@ -491,9 +500,9 @@ while not glfw.window_should_close(window):
         print(f'sensor data: {data.sensordata[0]}')
         # if we aren't using the PD control mode and instead using prerecorded data, then
         # we should set the control input to the nth value of the recorded torque array
-        if not control_flag:
-            data.ctrl[0] = recorded_torques[recorded_control_counter,1]
-            recorded_control_counter+=1
+        # if not control_flag:
+        #     data.ctrl[0] = recorded_torques[recorded_control_counter,1]
+        #     recorded_control_counter+=1
 
         # step the simulation forward in time
         mj.mj_step(model, data)
@@ -566,7 +575,7 @@ impulse_thread_exit_flag = True
 # if control_flag:
     # torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
     # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
-plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
+# plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
 # # else:
 # #     plot_columns(recorded_torques, 'Control Torque')
 # plot_columns(perturbation_data_array, "perturbation versus time")

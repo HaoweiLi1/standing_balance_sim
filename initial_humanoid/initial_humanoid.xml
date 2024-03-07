@@ -24,12 +24,12 @@
     <material name="body" texture="body" texuniform="true" rgba="0.8 0.6 .4 1"/>
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
-    <mesh name="tetrahedron" vertex="0 0 0  1 0 0  0 1 0  0 0 1"/>
+    <mesh name="tetrahedron" vertex="-1 0 0  1 0 0  0 -1 0  0 1 0  0.25 0 0.5"/>
   </asset>
 
   <!-- SECTION TO DEFINE GEOMETRIES AND JOINTS -->
   <default>
-    <motor ctrlrange="-3 3" ctrllimited="true"/>
+    <motor ctrlrange="-1 1" ctrllimited="true"/>
     <default class="body">
 
       <!-- geoms -->
@@ -39,7 +39,7 @@
       <!-- SHIN GEOMETRY -->
       <default class="shin">
         <!-- <geom size="0.03 0.5"/>  pos="0 0 .07"/> -->
-        <geom fromto="0 0 0.1 0 0 0" size = "0.03"/>
+        <geom fromto="0 0 0.1 0 0 0" size = "0.025"/>
       </default>
 
 
@@ -92,7 +92,7 @@
         <!-- <geom type="plane" size="10 0.1 10" rgba="0.5 0.5 0.5 1"/> -->
         
         <!-- BODY FOR SHIN; CAN HAVE MAX 6-DOF -->
-        <body name="foot" pos="0 0 0.035">
+        <body name="foot" >
           <!-- <joint name="knee_right" class="knee"/> -->
       
           <!-- Create prismatic joints to constrain motion along the x and z directions -->
@@ -102,8 +102,8 @@
   
           
             <!-- <geom name="foot1_right" class="foot1"/> -->
-          <geom name="foot1_right" class="foot2"/>
-          
+          <!-- <geom name="foot1_right" class="foot2"/> -->
+          <geom type="mesh" mesh="tetrahedron"/>
           <body name="shin_body">
           
           
@@ -129,7 +129,7 @@
       <position name="position_servo_x_right" joint="ankle_x_right" kp="10"/>
 	    <velocity name="velocity_servo_x_right" joint="ankle_x_right" kv="0"/> -->
       
-      <motor joint="ankle_hinge" name="shin_actuator" gear="40"/>
+      <motor joint="ankle_hinge" name="shin_actuator" gear="80"/>
       <!-- <motor joint="ankle_y_right" name="ankle_actuator_y" gear="144"/> -->
       <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/>
 	</actuator>
