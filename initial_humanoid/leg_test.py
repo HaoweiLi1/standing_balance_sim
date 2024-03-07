@@ -13,17 +13,21 @@ import time
 from queue import Queue
 import xml.etree.ElementTree as ET
 import imageio
+from plotting_utilities import plot_3d_pose_trajectory, \
+                               plot_columns, \
+                               plot_four_columns, \
+                               plot_two_columns
 
 xml_path = 'initial_humanoid.xml'     # XML file path
-simend = 15                            # duration of simulation
+simend = 5                            # duration of simulation
 K_p = 1                               # predefining proportional gain for controller 
 impulse_thread_exit_flag = False      # Bool used to stop impulse thread from running
-control_mode = "torque"                       # Set the control type to use - presently just proportional torque controller
-ankle_position_setpoint = 2.5*np.pi/180
+control_mode = "torque"               # Set the control type to use - presently just proportional torque controller
+ankle_position_setpoint = 2.5*np.pi/180 # ankle joint angle position setpoint
 
-perturbation_time = 0.25                     # parameter that sets pulse width of impulse
-perturbation_magnitude = 300             # size of impulse
-perturbation_period = 2                      # period at which impulse occurs
+perturbation_time = 0.25              # parameter that sets pulse width of impulse
+perturbation_magnitude = 300          # size of impulse
+perturbation_period = 2               # period at which impulse occurs
 
 # precallocating arrays and queues for data sharing and data collection
 control_log_array = np.empty((1,2))
@@ -59,165 +63,9 @@ plt.rcParams['text.usetex'] = True
 
 mpl.rcParams.update(mpl.rcParamsDefault)
 
-def plot_3d_pose_trajectory(positions, orientations):
-    
-    
-    
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    ax.set_xlabel('$X$')
-    ax.set_ylabel('$Y$')
-    ax.set_zlabel('$Z$')
-    ax.set_title('$Body\;Center\;of\;Mass\;Trajectory}$')
-
-    # Plot the trajectory
-    ax.plot(positions[1:, 1], positions[1:, 2], positions[1:, 3], marker=".",color='k')
-
-    # Draw the orientation vectors
-    for i in range(1,len(positions),10):
-        ax.quiver(positions[i, 1], positions[i, 2], positions[i, 3],
-                  orientations[i][0], orientations[i][3], orientations[i][6],
-                  color='r', length=0.1)
-        
-        ax.quiver(positions[i, 1], positions[i, 2], positions[i, 3],
-                  orientations[i][1], orientations[i][4], orientations[i][7],
-                  color='g', length=0.1)
-
-        ax.quiver(positions[i, 1], positions[i, 2], positions[i, 3],
-                  orientations[i][2], orientations[i][5], orientations[i][8],
-                  color='b', length=0.1)
-    ax.set_ylim(-0.5,0.5)
-    legend_entries = ["COM Pos.", "$\\theta_x$", "$\\theta_y$", "$\\theta_z$"]
-    # plt.legend(labels=legend_entries)
-    plt.show()
-
-def plot_columns(data_array, y_axis):
-    """
-    Plot the data in the first column versus the data in the second column.
-
-    Parameters:
-    - data_array: NumPy array with at least two columns.
-
-    Returns:
-    - None
-    """
-    # Check if the array has at least two columns
-    if data_array.shape[1] < 2:
-        print("Error: The input array must have at least two columns.")
-        return
-
-    # Extract the columns for plotting
-    x_values = data_array[1:, 0]
-    y_values = data_array[1:, 1]
-
-    # Plot the data
-    plt.plot(x_values, y_values, linestyle='-', color='b', label=y_axis)
-
-    # Add labels and a title
-    plt.xlabel('$\\t{Time [sec]}$')
-    plt.ylabel(y_axis)
-    plt.title(y_axis + "$\\bf{,\;versus\;Time, \\it{t}}$")
-
-    # Add a legend
-    # plt.legend()
-
-    # Show the plot
-    plt.show()
-
-def plot_two_columns(data_array1, data_array2, y_axis1, y_axis2):
-    """
-    Plot the data in the first column of data_array1 versus the data in the first column of data_array2,
-    and the second column of data_array1 versus the second column of data_array2.
-
-    Parameters:
-    - data_array1: NumPy array with at least two columns.
-    - data_array2: NumPy array with at least two columns.
-    - y_axis1: Label for the y-axis of the first plot.
-    - y_axis2: Label for the y-axis of the second plot.
-
-    Returns:
-    - None
-    """
-    # Check if the arrays have at least two columns
-    if data_array1.shape[1] < 2 or data_array2.shape[1] < 2:
-        print("Error: Both input arrays must have at least two columns.")
-        return
-
-    # Extract the columns for plotting
-    x_values1 = data_array1[1:, 0]
-    y_values1 = data_array1[1:, 1]
-
-    x_values2 = data_array2[1:, 0]
-    y_values2 = data_array2[1:, 1]
-
-    # Plot the data for the first array
-    plt.plot(x_values1, y_values1, linestyle='-', color='b', label=y_axis1)
-
-    # Plot the data for the second array on the same plot
-    plt.plot(x_values1, y_values2, linestyle='-', color='r', label=y_axis2)
-
-    # Add labels and a title
-    plt.xlabel('Time [sec]')
-    plt.title(f"{y_axis1} and {y_axis2} versus Time")
-
-    # Add legends
-    plt.legend()
-
-    # Show the plot
-    plt.show()
-
-def plot_four_columns(data_array1, data_array2, data_array3, data_array4, y_axis1, y_axis2, y_axis3, y_axis4):
-    """
-    Plot the data in the first column of each data array versus the data in the second column for all four datasets.
-
-    Parameters:
-    - data_array1: NumPy array with at least two columns.
-    - data_array2: NumPy array with at least two columns.
-    - data_array3: NumPy array with at least two columns.
-    - data_array4: NumPy array with at least two columns.
-    - y_axis1: Label for the y-axis of the first plot.
-    - y_axis2: Label for the y-axis of the second plot.
-    - y_axis3: Label for the y-axis of the third plot.
-    - y_axis4: Label for the y-axis of the fourth plot.
-
-    Returns:
-    - None
-    """
-    # Check if the arrays have at least two columns
-    if (
-        data_array1.shape[1] < 2 or
-        data_array2.shape[1] < 2 or
-        data_array3.shape[1] < 2 or
-        data_array4.shape[1] < 2
-    ):
-        print("Error: All input arrays must have at least two columns.")
-        return
-
-    # Extract the columns for plotting
-    x_values = data_array1[1:, 0]
-
-    y_values1 = data_array1[1:, 1]
-    y_values2 = data_array2[1:, 1]
-    y_values3 = data_array3[1:, 1]
-    y_values4 = data_array4[1:, 1]
-
-    # Plot the data for each array
-    plt.plot(x_values, y_values1, linestyle='-', color='b', label=y_axis1)
-    plt.plot(x_values, y_values2, linestyle='-', color='r', label=y_axis2)
-    # plt.plot(x_values, y_values3, linestyle='-', color='g', label=y_axis3)
-    plt.plot(x_values, y_values4, linestyle='-', color='purple', label=y_axis4)
-
-    # Add labels and a title
-    plt.xlabel('$\textnormal{Time [sec]}$')
-    plt.title(f"{y_axis1}, {y_axis2}, {y_axis3}, and {y_axis4} versus Time")
-
-    # Add legends
-    plt.legend()
-
-    # Show the plot
-    plt.show()
-
+# this function is a thread that uses imulse_thread_exit_flag (global variable)
+# not sure if there is a way to move this function to a utility script without 
+# preventing function from accessing impulse_thread_exit_flag
 def generate_large_impulse(perturbation_queue, impulse_time, perturbation_magnitude, impulse_period):
     
     while not impulse_thread_exit_flag: # run continuously once we start a thread 
@@ -248,6 +96,7 @@ def generate_large_impulse(perturbation_queue, impulse_time, perturbation_magnit
             # Put the generated impulse into the result queue
             perturbation_queue.put(direction_bool*perturbation)
 
+# this function has to stay in this script per MuJoCo documentation
 def controller(model, data):
     """
     Controller function for the leg. The only two parameters 
@@ -321,6 +170,7 @@ def controller(model, data):
     # data.qfrc_applied[3] = rx_perturbation
     # data.qfrc_applied[4] = ry_perturbation
 
+# calculate mass, geometry, and controller gain data from literature equations
 def calculate_kp_and_geom(weight, height):
     
     M_total = weight # [kg]
@@ -520,7 +370,7 @@ while not glfw.window_should_close(window):
             perturbation_data_array = np.vstack((perturbation_data_array, np.array([data.time, 0.]) ))
             
         # collect joint position and velocity data from simulation for visualization
-        joint_position_data = np.vstack((joint_position_data, np.array([data.time, -180/np.pi*data.qpos[ankle_joint_id]]) ))
+        joint_position_data = np.vstack((joint_position_data, np.array([data.time, 180/np.pi*data.qpos[ankle_joint_id]]) ))
         joint_velocity_data = np.vstack((joint_velocity_data, np.array([data.time, 180/np.pi*data.qvel[ankle_joint_id]]) ))
         goal_position_data = np.vstack((goal_position_data, np.array([0,180/np.pi*ankle_position_setpoint]) ))
         # collect center of mass data for ID associated with human body element of XML model
@@ -571,22 +421,22 @@ glfw.terminate()
 impulse_thread_exit_flag = True
 # perturbation_thread.join()
 
-# plot_3d_pose_trajectory(body_com_data, body_orientation_data)
+plot_3d_pose_trajectory(body_com_data, body_orientation_data)
 # if control_flag:
     # torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
     # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
 # plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
 # # else:
 # #     plot_columns(recorded_torques, 'Control Torque')
-# plot_columns(perturbation_data_array, "perturbation versus time")
-# plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
-# plot_columns(joint_velocity_data, "Joint Velocity")
-# plot_four_columns(joint_position_data, 
-#                   goal_position_data, 
-#                   joint_velocity_data, 
-#                   control_log_array,
-#                   "joint actual pos.",
-#                   "joint goal pos.",
-#                   "joint vel.",
-#                   "control torque")
+plot_columns(perturbation_data_array, "perturbation versus time")
+plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
+plot_columns(joint_velocity_data, "Joint Velocity")
+plot_four_columns(joint_position_data, 
+                  goal_position_data, 
+                  joint_velocity_data, 
+                  control_log_array,
+                  "joint actual pos.",
+                  "joint goal pos.",
+                  "joint vel.",
+                  "control torque")
 
