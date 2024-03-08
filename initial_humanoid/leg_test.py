@@ -214,7 +214,7 @@ for body in root.iter('body'):
         if body.get('name') == "foot":
             poo = body.get('pos')
             print(f'pos: {poo}')
-            body.set('pos',  f'0 0 0.1')
+            body.set('pos',  f'0 0 0')
 
         elif body.get('name') == "shin_body":
             # size = float(body.get('size'))
@@ -421,22 +421,22 @@ glfw.terminate()
 impulse_thread_exit_flag = True
 # perturbation_thread.join()
 
-plot_3d_pose_trajectory(body_com_data, body_orientation_data)
+# plot_3d_pose_trajectory(body_com_data, body_orientation_data)
 # if control_flag:
     # torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
     # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
 # plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
 # # else:
 # #     plot_columns(recorded_torques, 'Control Torque')
-plot_columns(perturbation_data_array, "perturbation versus time")
-plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
-plot_columns(joint_velocity_data, "Joint Velocity")
-plot_four_columns(joint_position_data, 
-                  goal_position_data, 
-                  joint_velocity_data, 
-                  control_log_array,
-                  "joint actual pos.",
-                  "joint goal pos.",
-                  "joint vel.",
-                  "control torque")
+# plot_columns(perturbation_data_array, "perturbation versus time")
+# plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
+# plot_columns(joint_velocity_data, "Joint Velocity")
+# plot_four_columns(joint_position_data, 
+#                   goal_position_data, 
+#                   joint_velocity_data, 
+#                   control_log_array,
+#                   "joint actual pos.",
+#                   "joint goal pos.",
+#                   "joint vel.",
+#                   "control torque")
 
