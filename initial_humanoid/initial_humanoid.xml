@@ -129,7 +129,7 @@
       <position name="position_servo_x_right" joint="ankle_x_right" kp="10"/>
 	    <velocity name="velocity_servo_x_right" joint="ankle_x_right" kv="0"/> -->
       
-      <motor joint="ankle_hinge" name="shin_actuator" gear="80"/>
+      <motor joint="ankle_hinge" name="shin_actuator" gear="60"/>
       <!-- <motor joint="ankle_y_right" name="ankle_actuator_y" gear="144"/> -->
       <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/>
 	</actuator>

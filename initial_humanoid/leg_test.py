@@ -18,6 +18,8 @@ from plotting_utilities import plot_3d_pose_trajectory, \
                                plot_four_columns, \
                                plot_two_columns
 
+from xml_utilities import calculate_kp_and_geom, set_geometry_params
+
 xml_path = 'initial_humanoid.xml'     # XML file path
 simend = 5                            # duration of simulation
 K_p = 1                               # predefining proportional gain for controller 
@@ -170,72 +172,17 @@ def controller(model, data):
     # data.qfrc_applied[3] = rx_perturbation
     # data.qfrc_applied[4] = ry_perturbation
 
-# calculate mass, geometry, and controller gain data from literature equations
-def calculate_kp_and_geom(weight, height):
-    
-    M_total = weight # [kg]
-    H_total = height # [meters]
-    m_feet = 2 * 0.0145 * M_total
-    m_body = M_total - m_feet
-    l_COM = 0.575*H_total
-    l_foot = 0.152*H_total
-    a = 0.19*l_foot
-    K_p = m_body * 9.81 * l_COM
-
-    return m_feet, m_body, l_COM, l_foot, a, K_p
-
 tree = ET.parse(xml_path)
 root = tree.getroot()
 # MODIFY THE XML FILE AND INSERT THE MASS AND LENGTH
-# PROPERTIES OF INTEREST WHICH ARE CALCULATED BY 
+# PROPERTIES OF INTEREST 
 M_total = 80 # kg
 H_total = 1.78 # meters
 m_feet, m_body, l_COM, l_foot, a, K_p = calculate_kp_and_geom \
                                         (M_total, H_total)
 h_f = H_total/10 # temporary foot height
 
-for geom in root.iter('geom'):
-        if geom.get('name') == "shin_geom":
-
-            geom.set('fromto', f'0 0 {H_total} 0 0 0')
-            # geom.set('pos', f'0 0 {H_total-l_COM}')
-            geom.set('mass', str(m_body))
-            # geom.set('size', 0.05)
-
-        elif geom.get('name') == "foot1_right":
-
-            geom.set('fromto', f'0 .02 0 {l_foot} .02 0')
-            geom.set('mass', str(m_feet))
-        
-        elif geom.get('name') == "foot":
-            geom.set('pos', f'{0} 0')
-
-for body in root.iter('body'):
-        if body.get('name') == "foot":
-            poo = body.get('pos')
-            print(f'pos: {poo}')
-            body.set('pos',  f'0 0 0')
-
-        elif body.get('name') == "shin_body":
-            # size = float(body.get('size'))
-            body.set('pos', f'{l_foot/2-a} 0 {h_f}')
-
-for joint in root.iter('joint'):
-        if joint.get('name') == "ankle_hinge":
-            joint.set("pos", f"0 0 0")
-
-        elif joint.get('name') == "rotation_dof":
-            joint.set('pos', f'-{l_foot} 0 0.035')
-
-        elif joint.get('name') == "joint_slide_x":
-            joint.set('pos', f"{l_foot/2} 0 0.035")
-
-        elif joint.get('name') == "joint_slide_z":
-            joint.set('pos', f"{l_foot/2} 0 0.035")
-
-for mesh in root.iter('mesh'):
-    if mesh.get('name') == "tetrahedron":
-        mesh.set('vertex', f"{-l_foot/2} 0 0  {l_foot/2} 0 0  0 -0.035 0  0 0.035 0  {l_foot/2-a} 0 {h_f}")
+set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f)
 
 tree.write('modified_model_new.xml')
 ########
@@ -425,11 +372,11 @@ impulse_thread_exit_flag = True
 # if control_flag:
     # torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
     # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
-# plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
+plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
 # # else:
 # #     plot_columns(recorded_torques, 'Control Torque')
 # plot_columns(perturbation_data_array, "perturbation versus time")
-# plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
+plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
 # plot_columns(joint_velocity_data, "Joint Velocity")
 # plot_four_columns(joint_position_data, 
 #                   goal_position_data, 
