@@ -181,9 +181,7 @@ H_total = 1.78 # meters
 m_feet, m_body, l_COM, l_foot, a, K_p = calculate_kp_and_geom \
                                         (M_total, H_total)
 h_f = H_total/10 # temporary foot height
-
-set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f)
-
+set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f) # call utility functoin to set parameters of xml model
 tree.write('modified_model_new.xml')
 ########
 
@@ -299,7 +297,6 @@ while not glfw.window_should_close(window):
         # we should set the control input to the nth value of the recorded torque array
         # if not control_flag:
         #     data.ctrl[0] = recorded_torques[recorded_control_counter,1]
-        #     recorded_control_counter+=1
 
         # step the simulation forward in time
         mj.mj_step(model, data)
@@ -344,16 +341,16 @@ while not glfw.window_should_close(window):
                     mj.mjtCatBit.mjCAT_ALL.value, scene)
     mj.mjr_render(viewport, scene, context)
 
+
+    ###### CODE TO CAPTURE FRAMES FOR MP4 VIDEO GENERATION ##########
     # Capture the frame
     # rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
     # depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
-
     # mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
-    
     # rgb_array = np.flipud(rgb_array)
-
     # # # Append the frame to the list
     # frames.append(rgb_array) 
+    #################################################################
 
     # swap OpenGL buffers (blocking call due to v-sync)
     glfw.swap_buffers(window)
@@ -361,12 +358,18 @@ while not glfw.window_should_close(window):
     # process pending GUI events, call GLFW callbacks
     glfw.poll_events()
 
+# this writes the list of frames we collected to an mp4 file and makes it a video
 # imageio.mimwrite(video_file, frames, fps=video_fps)
 
 glfw.terminate()
 
 impulse_thread_exit_flag = True
+
+# need this to turn off the pertuabtion thread when the simulation code is done running
 # perturbation_thread.join()
+
+##### PLOTTING CODE ######################
+##########################################
 
 # plot_3d_pose_trajectory(body_com_data, body_orientation_data)
 # if control_flag:
@@ -387,3 +390,5 @@ plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Go
 #                   "joint vel.",
 #                   "control torque")
 
+###########################################
+###########################################
