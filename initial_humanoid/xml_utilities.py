@@ -1,19 +1,3 @@
-import mujoco as mj
-from mujoco.glfw import glfw
-import numpy as np
-import os
-from typing import Callable, Optional, Union, List
-import scipy.linalg
-import mediapy as media
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import threading
-import time
-from queue import Queue
-import xml.etree.ElementTree as ET
-import imageio
-
 # calculate mass, geometry, and controller gain data from literature equations
 def calculate_kp_and_geom(weight, height):
     
