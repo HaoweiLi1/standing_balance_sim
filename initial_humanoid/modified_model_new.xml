@@ -24,7 +24,7 @@
     <material name="body" texture="body" texuniform="true" rgba="0.8 0.6 .4 1" />
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4" />
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2" />
-    <mesh name="tetrahedron" vertex="-0.13528 0 0  0.13528 0 0  0 -0.035 0  0 0.035 0  0.0838736 0 0.178" />
+    <mesh name="foot_mesh" vertex="-0.13528 0 0  0.13528 0 0  0 -0.035 0  0 0.035 0  0.0838736 0 0.178" />
   </asset>
 
   
@@ -38,44 +38,8 @@
       
       
       <default class="shin">
-        
         <geom fromto="0 0 0.1 0 0 0" size="0.025" />
       </default>
-
-
-      
-      <default class="foot">
-        <geom type="capsule" size=".035" friction="0.9 0 0" solimp=".9 .99 .003" solref=".015 1" mass="2" />
-        
-        <default class="foot1">
-          <geom fromto="-.07 -0.01 0 .14 0.01 0" />
-        </default>
-        
-        <default class="foot2">
-          <geom fromto="-.14 -.01 0 .14 .01 0" />
-        </default>
-       </default>
-
-      
-      
-      <default class="knee">
-        <joint type="hinge" pos="0 0 .02" range="-160 160" />
-      </default>
-      
-      <joint type="hinge" damping=".2" stiffness="1" armature=".01" limited="true" solimplimit="0 .99 .01" />
-      <default class="ankle">
-        <joint range="-50 50" />
-        
-        
-        <default class="ankle_y">
-          <joint pos="0 0 .04" axis="0 1 0" stiffness="6" />
-        </default>
-        
-        
-        <default class="ankle_x">
-          <joint pos="0 0 .04" stiffness="3" />
-        </default>
-      </default>  
 
     </default>
   </default>
@@ -87,10 +51,7 @@
       
       
       <light name="spotlight" mode="targetbodycom" target="foot" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30" />
-      
-      
-        
-        
+    
         
         <body name="foot" pos="0 0 0">
           
@@ -100,11 +61,9 @@
           <joint type="slide" name="joint_slide_x" axis="-1 0 0" pos="0.13528 0 0.035" />
           <joint type="slide" name="joint_slide_z" axis="0 0 1" pos="0.13528 0 0.035" />
   
-          
-            
-          
-          <geom type="mesh" mesh="tetrahedron" />
+          <geom type="mesh" mesh="foot_mesh" name="foot_geom" />
           <body name="shin_body" pos="0.0838736 0 0.178">
+          
           
           
           
@@ -113,27 +72,27 @@
 
           </body>
 
-          
-
         </body>
       
       
 	</worldbody>
 	
+  <contact>
+    
+    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" friction="0.5 0.5 0.99 0.99 0.99" />
+  </contact>
+
     
 	<actuator>
-      
-      
-      <motor joint="ankle_hinge" name="shin_actuator" gear="60" />
-      
+      <motor joint="ankle_hinge" name="shin_actuator" gear="170" />
       <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40" />
 	</actuator>
 
     
 	<sensor>
       <jointpos joint="ankle_hinge" />
-      
-      
-      
 	</sensor>
+
+  
+
 </mujoco>

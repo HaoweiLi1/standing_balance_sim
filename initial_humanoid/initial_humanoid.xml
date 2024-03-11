@@ -24,7 +24,7 @@
     <material name="body" texture="body" texuniform="true" rgba="0.8 0.6 .4 1"/>
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
-    <mesh name="tetrahedron" vertex="-1 0 0  1 0 0  0 -1 0  0 1 0  0.25 0 0.5"/>
+    <mesh name="foot_mesh" vertex="-1 0 0  1 0 0  0 -1 0  0 1 0  0.25 0 0.5"/>
   </asset>
 
   <!-- SECTION TO DEFINE GEOMETRIES AND JOINTS -->
@@ -38,44 +38,8 @@
       
       <!-- SHIN GEOMETRY -->
       <default class="shin">
-        <!-- <geom size="0.03 0.5"/>  pos="0 0 .07"/> -->
         <geom fromto="0 0 0.1 0 0 0" size = "0.025"/>
       </default>
-
-
-      <!-- FOOT GEOMETRY -->
-      <default class="foot">
-        <geom type='capsule' size=".035" friction="0.9 0 0" solimp=".9 .99 .003" solref=".015 1" mass="2"/>
-        <!-- LEFT HALF OF FOOT -->
-        <default class="foot1">
-          <geom fromto="-.07 -0.01 0 .14 0.01 0"/>
-        </default>
-        <!-- RIGHT HALF OF FOOT -->
-        <default class="foot2">
-          <geom fromto="-.14 -.01 0 .14 .01 0"/>
-        </default>
-       </default>
-
-      <!-- joints -->
-      <!-- KNEE JOINT; MUST DEFINE AS FREE JOINT SO LEG FLOATS -->
-      <default class="knee">
-        <joint type="hinge" pos="0 0 .02" range="-160 160"/>
-      </default>
-      <!-- MAKE ALL ANKLE JOINTS HINGE JOINTS -->
-      <joint type="hinge" damping=".2" stiffness="1" armature=".01" limited="true" solimplimit="0 .99 .01"/>
-      <default class="ankle">
-        <joint range="-50 50"/>
-        
-        <!-- Y-AXIS JOINT (+Y AXIS GOES INTO SCREEN) -->
-        <default class="ankle_y">
-          <joint pos="0 0 .04" axis="0 1 0" stiffness="6"/>
-        </default>
-        
-        <!-- X-AXIS JOINT (+X AXIS GOES TO THE RIGHT SIDE OF SCREEN) -->
-        <default class="ankle_x">
-          <joint pos="0 0 .04" stiffness="3"/>
-        </default>
-      </default>  
 
     </default>
   </default>
@@ -87,10 +51,7 @@
       
       <!-- LIGHT SETTING -->
       <light name="spotlight" mode="targetbodycom" target="foot" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30"/>
-      
-      <!-- <body name = "plane_body" pos="0 0 1"> -->
-        <!-- <geom type="plane" size="10 0.1 10" rgba="0.5 0.5 0.5 1"/> -->
-        
+    
         <!-- BODY FOR SHIN; CAN HAVE MAX 6-DOF -->
         <body name="foot" >
           <!-- <joint name="knee_right" class="knee"/> -->
@@ -100,11 +61,9 @@
           <joint type="slide" name="joint_slide_x" axis="-1 0 0"/>
           <joint type="slide" name="joint_slide_z" axis="0 0 1"/>
   
-          
-            <!-- <geom name="foot1_right" class="foot1"/> -->
-          <!-- <geom name="foot1_right" class="foot2"/> -->
-          <geom type="mesh" mesh="tetrahedron"/>
+          <geom type="mesh" mesh="foot_mesh" name="foot_geom"/>
           <body name="shin_body">
+          
           
           
           <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
@@ -113,33 +72,27 @@
 
           </body>
 
-          <!-- <body name='big_toe' pos="0.1 0 -0.39">
-            <joint name="toey_mctoe" type="hinge" range="-5 5"/>
-            <geom name="mr_toe" type="sphere" size='0.025'/>
-          </body> -->
-
         </body>
       <!-- </body> -->
       <!-- END OF DEFINING THE LEG IN 3D SPACE -->
 	</worldbody>
 	
+  <contact>
+    <!-- <pair geom1="foot_geom" geom2="ground"/> -->
+    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" friction="0.99 0.99 0.99 0.99 0.99"/>
+  </contact>
+
     <!-- ACTUATORS FOR THE ANKLE JOINTS -->
 	<actuator>
-      <!-- <motor joint="ankle_x_right" name="ankle_actuator_x" gear="20"/>
-      <position name="position_servo_x_right" joint="ankle_x_right" kp="10"/>
-	    <velocity name="velocity_servo_x_right" joint="ankle_x_right" kv="0"/> -->
-      
-      <motor joint="ankle_hinge" name="shin_actuator" gear="60"/>
-      <!-- <motor joint="ankle_y_right" name="ankle_actuator_y" gear="144"/> -->
+      <motor joint="ankle_hinge" name="shin_actuator" gear="170"/>
       <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/>
 	</actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->
 	<sensor>
       <jointpos joint='ankle_hinge'/>
-      <!-- <jointpos joint="ankle_y_right" /> -->
-      <!-- <jointvel joint="ankle_y_right" noise ="0.1"/> -->
-      <!-- <jointpos joint="ankle_x_right" noise="0.1"/>
-      <jointvel joint="ankle_x_right" noise ="1"/> -->
 	</sensor>
+
+  
+
 </mujoco>

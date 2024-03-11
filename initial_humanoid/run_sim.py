@@ -25,7 +25,11 @@ simend = 5                            # duration of simulation
 K_p = 1                               # predefining proportional gain for controller 
 impulse_thread_exit_flag = False      # Bool used to stop impulse thread from running
 control_mode = "torque"               # Set the control type to use - presently just proportional torque controller
-ankle_position_setpoint = 2.5*np.pi/180 # ankle joint angle position setpoint
+ankle_position_setpoint = 5*np.pi/180 # ankle joint angle position setpoint
+ankle_joint_initial_position = ankle_position_setpoint # ankle joint initial angle
+
+translation_friction_constant = 0.99
+rolling_friction_constant = 0.99
 
 perturbation_time = 0.25              # parameter that sets pulse width of impulse
 perturbation_magnitude = 300          # size of impulse
@@ -159,6 +163,8 @@ def controller(model, data):
 
     x_perturbation=0
     
+    # print(time.time())
+
     if not perturbation_queue.empty():
         # print(f"perturbation: {perturbation_queue.get()}, time: {time.time()-start}")
         x_perturbation = perturbation_queue.get()
@@ -181,7 +187,17 @@ H_total = 1.78 # meters
 m_feet, m_body, l_COM, l_foot, a, K_p = calculate_kp_and_geom \
                                         (M_total, H_total)
 h_f = H_total/10 # temporary foot height
-set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f) # call utility functoin to set parameters of xml model
+set_geometry_params(root, 
+                    m_feet, 
+                    m_body, 
+                    l_COM, 
+                    l_foot, 
+                    a, 
+                    H_total, 
+                    h_f, 
+                    translation_friction_constant, 
+                    rolling_friction_constant) # call utility functoin to set parameters of xml model
+
 tree.write('modified_model_new.xml')
 ########
 
@@ -257,7 +273,7 @@ data.qvel[2]= 0              # slide / prismatic joint at top of body in z direc
 # data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
 # data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
 # data.qpos[2]=-np.pi/6   # slide / prismatic joint at top of body in z direction
-data.qpos[3]=2.5*np.pi/180 # hinge joint at ankle
+data.qpos[3]= ankle_joint_initial_position # hinge joint at ankle
 
 # ID number for the ankle joint, used for data collection
 ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
@@ -287,17 +303,24 @@ perturbation_thread = threading.Thread \
     daemon=True, 
     args=(perturbation_queue,perturbation_time, perturbation_magnitude, perturbation_period) )
 # perturbation_thread.start()
+start_time = time.time()
 
-while not glfw.window_should_close(window):
+sim_exit_flag = False
+while not glfw.window_should_close(window) or sim_exit_flag:
     simstart = data.time
+    
+    while (data.time - simstart < 1.0/60.0) or sim_exit_flag:
+        # print(data.qpos[0])
+        # print(f'time delta: {time.time() - start_time}')
 
-    while (data.time - simstart < 1.0/60.0):
-        print(f'sensor data: {data.sensordata[0]}')
+        if data.qpos[0] > np.pi/4 or data.qpos[0] < -np.pi/4:
+            sim_exit_flag = True 
+        #print(f'sensor data: {data.sensordata[0]}')
         # if we aren't using the PD control mode and instead using prerecorded data, then
         # we should set the control input to the nth value of the recorded torque array
         # if not control_flag:
         #     data.ctrl[0] = recorded_torques[recorded_control_counter,1]
-
+        print(f"simulation time: {data.time}")
         # step the simulation forward in time
         mj.mj_step(model, data)
     
@@ -327,10 +350,10 @@ while not glfw.window_should_close(window):
         # add orientation data to array
         # orientation_matrix = np.reshape(orientation_vector, (3,3))
         body_orientation_data = np.vstack((body_orientation_data, orientation_vector))
-
-    if (data.time>=simend):
+    
+    if (data.time>=simend) or sim_exit_flag:
         break;
-
+    
     # get framebuffer viewport
     viewport_width, viewport_height = glfw.get_framebuffer_size(
         window)
@@ -360,7 +383,7 @@ while not glfw.window_should_close(window):
 
 # this writes the list of frames we collected to an mp4 file and makes it a video
 # imageio.mimwrite(video_file, frames, fps=video_fps)
-
+print('terminated')
 glfw.terminate()
 
 impulse_thread_exit_flag = True
@@ -375,11 +398,11 @@ impulse_thread_exit_flag = True
 # if control_flag:
     # torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
     # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
-plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
+# plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
 # # else:
 # #     plot_columns(recorded_torques, 'Control Torque')
 # plot_columns(perturbation_data_array, "perturbation versus time")
-plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
+# plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
 # plot_columns(joint_velocity_data, "Joint Velocity")
 # plot_four_columns(joint_position_data, 
 #                   goal_position_data, 

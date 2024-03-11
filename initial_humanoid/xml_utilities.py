@@ -13,7 +13,7 @@ def calculate_kp_and_geom(weight, height):
     return m_feet, m_body, l_COM, l_foot, a, K_p
 
 
-def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f):
+def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, trans_fric, roll_fric):
 
     for geom in root.iter('geom'):
         if geom.get('name') == "shin_geom":
@@ -54,6 +54,10 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f):
             elif joint.get('name') == "joint_slide_z":
                 joint.set('pos', f"{l_foot/2} 0 0.035")
 
+    for pair in root.iter('pair'):
+        if pair.get('name') == "foot_ground_friction":
+            pair.set('friction', f"{trans_fric} {trans_fric} 0.99 {roll_fric} {roll_fric}")
+
     for mesh in root.iter('mesh'):
-        if mesh.get('name') == "tetrahedron":
+        if mesh.get('name') == "foot_mesh":
             mesh.set('vertex', f"{-l_foot/2} 0 0  {l_foot/2} 0 0  0 -0.035 0  0 0.035 0  {l_foot/2-a} 0 {h_f}")
