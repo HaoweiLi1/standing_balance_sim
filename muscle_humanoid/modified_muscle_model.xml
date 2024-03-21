@@ -29,7 +29,7 @@
 
   
   <default>
-    <motor ctrlrange="-0.5 0.5" ctrllimited="true" />
+    <motor ctrlrange="-1 1" ctrllimited="true" />
     <default class="body">
 
       
@@ -53,7 +53,7 @@
       <light name="spotlight" mode="targetbodycom" target="foot" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30" />
     
         
-        <body name="foot" pos="0 0 0.08">
+        <body name="foot" pos="0 0 0">
           
       
           
@@ -62,13 +62,19 @@
           <joint type="slide" name="joint_slide_z" axis="0 0 1" pos="0.13528 0 0.035" />
   
           <geom type="mesh" mesh="foot_mesh" name="foot_geom" />
+          
+          <site name="front_foot_site" pos="-0.09018666666666668 0 0.05" size="0.01 0.01 0.01" />
+          <site name="back_foot_site" pos="0.13528 0 0.05" size="0.01 0.01 0.01" />
+          
           <body name="shin_body" pos="0.0838736 0 0.178">
           
-          
+            
           
           
             <joint type="hinge" name="ankle_hinge" axis="0 -1 0" pos="0 0 0" />
             <geom name="shin_geom" class="shin" fromto="0 0 1.78 0 0 0" mass="77.68" />
+            <site name="front_shin_site" pos="-0.0125 0 0.534" size="0.01 0.01 0.01" />
+            <site name="back_shin_site" pos="0.0125 0 0.534" size="0.01 0.01 0.01" />
 
           </body>
 
@@ -77,16 +83,34 @@
       
 	</worldbody>
 	
+  
+  <tendon>
+    <spatial name="front_tendon" limited="true" range="0.7 1.05" width="0.0075">
+      <site site="front_foot_site" />
+      <site site="front_shin_site" />
+    </spatial>
+  </tendon>
+
+  <tendon>
+    <spatial name="back_tendon" limited="true" range="0.7 1.05" width="0.0075">
+      <site site="back_foot_site" />
+      <site site="back_shin_site" />
+    </spatial>
+  </tendon>
+
+
   <contact>
     
-    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" friction="0.99 0.99 0.99 0.99 0.99" />
+    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" friction="0.9 0.9 0.99 0.9 0.9" />
   </contact>
 
     
 	<actuator>
-      <motor joint="ankle_hinge" name="shin_actuator" gear="200" ctrlrange="-.5 .5" />
-      <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40" />
-	</actuator>
+      
+      
+      <muscle name="front_muscle" tendon="front_tendon" gear="40" />
+      <muscle name="back_muscle" tendon="back_tendon" gear="40" />
+  </actuator>
 
     
 	<sensor>

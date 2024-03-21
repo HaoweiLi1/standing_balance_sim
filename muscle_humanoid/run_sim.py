@@ -20,21 +20,19 @@ from plotting_utilities import plot_3d_pose_trajectory, \
 
 from xml_utilities import calculate_kp_and_geom, set_geometry_params
 
-xml_path = 'initial_humanoid.xml'     # XML file path
-simend = 10                            # duration of simulation
+xml_path = 'muscle_humanoid.xml'     # XML file path
+simend = 5                            # duration of simulation
 K_p = 1                               # predefining proportional gain for controller 
-# K_d = 0.001
 impulse_thread_exit_flag = False      # Bool used to stop impulse thread from running
 control_mode = "torque"               # Set the control type to use - presently just proportional torque controller
 ankle_position_setpoint = 5*np.pi/180 # ankle joint angle position setpoint
-prev_error = 0.
 ankle_joint_initial_position = ankle_position_setpoint # ankle joint initial angle
 
-translation_friction_constant = 0.99
-rolling_friction_constant = 0.99
+translation_friction_constant = 0.9
+rolling_friction_constant = 0.9
 
-perturbation_time = 0.5              # parameter that sets pulse width of impulse
-perturbation_magnitude = 400          # size of impulse
+perturbation_time = 0.25              # parameter that sets pulse width of impulse
+perturbation_magnitude = 300          # size of impulse
 perturbation_period = 2               # period at which impulse occurs
 
 # precallocating arrays and queues for data sharing and data collection
@@ -95,12 +93,12 @@ def generate_large_impulse(perturbation_queue, impulse_time, perturbation_magnit
         # start_time = time.time()
         # delta = time.time() - start_time
         end_time = time.time() + impulse_time
-        # print(time.time())
-        # print(end_time)
+        print(time.time())
+        print(end_time)
         while time.time() < end_time:
             # delta = time.time() - start_time
             # time.sleep(0.0000000001)
-            # print(f"impulse duration: {end_time-time.time()}")
+            print(f"impulse duration: {end_time-time.time()}")
             # Put the generated impulse into the result queue
             perturbation_queue.put(direction_bool*perturbation)
 
@@ -118,17 +116,20 @@ def controller(model, data):
         # model.actuator_gainprm[0, 0] = 1 
         # print(str(data.sensordata[0]) + ", " + str(data.sensordata[1]))
         # print()
-        # print(f'preverr: {prev_error}')
-        # print(f'ankkle pos: {ankle_position_setpoint}')
         
         error = ankle_position_setpoint - data.sensordata[0]
         # GRAVITY COMPENSATION #
-        human_torque = K_p * error # + K_d * (error - prev_error) / model.opt.timestep
+        human_torque = K_p * error
 
         exo_torque = -1*(human_torque)
         data.ctrl[0] = human_torque
-        
-        prev_error = error
+        # data.ctrl[1] = exo_torque
+        # print(data.ctrl[0])
+        # data.ctrl[0] = -0.5 * \
+        #     (data.sensordata[0] - 0.0) - \
+        #     1 * (data.sensordata[1] - 0.0)
+        # print(model.actuator_gainprm)
+        # pass
         
     elif control_mode == "servo":
         kp = 100.0
@@ -154,11 +155,11 @@ def controller(model, data):
     control_torque_time_array = np.array([data.time, human_torque])
     control_log_queue.put(control_torque_time_array)
 
-    # counter = 0
-    # if not counter_queue.empty():
-    #     counter = counter_queue.get()
-    # counter += 1
-    # counter_queue.put(counter)
+    counter = 0
+    if not counter_queue.empty():
+        counter = counter_queue.get()
+    counter += 1
+    counter_queue.put(counter)
 
     x_perturbation=0
     
@@ -197,11 +198,11 @@ set_geometry_params(root,
                     translation_friction_constant, 
                     rolling_friction_constant) # call utility functoin to set parameters of xml model
 
-tree.write('modified_model_new.xml')
+tree.write('modified_muscle_model.xml')
 ########
 
 #get the full path
-modified_xml_path = 'modified_model_new.xml'
+modified_xml_path = 'modified_muscle_model.xml'
 script_directory = os.path.dirname(os.path.abspath(__file__))
 xml_path = os.path.join(script_directory, xml_path)
 model = mj.MjModel.from_xml_path(modified_xml_path)  # MuJoCo XML model
@@ -221,7 +222,7 @@ mj.mjv_defaultCamera(cam)
 mj.mjv_defaultOption(opt)
 # opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
 # opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
-opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
+# opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
 opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
 opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = True
 opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
@@ -263,16 +264,16 @@ cam.elevation = -5
 cam.lookat = np.array([0.012768, -0.000000, 1.254336])
 
 # INITIAL CONDITIONS FOR JOINT VELOCITIES
-data.qvel[0]= 0              # hinge joint at top of body
-data.qvel[1]= 0              # slide / prismatic joint at top of body in x direction
-data.qvel[2]= 0              # slide / prismatic joint at top of body in z direction
+# data.qvel[0]= 0              # hinge joint at top of body
+# data.qvel[1]= 0              # slide / prismatic joint at top of body in x direction
+# data.qvel[2]= 0              # slide / prismatic joint at top of body in z direction
 # data.qvel[3]= 0.4           # hinge joint at ankle
 
 # INITIAL CONDITIONS FOR JOINT POSITION
 # data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
 # data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
 # data.qpos[2]=-np.pi/6   # slide / prismatic joint at top of body in z direction
-data.qpos[3]= ankle_joint_initial_position # hinge joint at ankle
+# data.qpos[3]= ankle_joint_initial_position # hinge joint at ankle
 
 # ID number for the ankle joint, used for data collection
 ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
@@ -288,7 +289,7 @@ if control_flag:
     # TO MUJOCO THING THAT DOES CONTROL... DONT FULLY
     # UNDERSTAND WHAT IS GOING ON HERE BUT IT DOES SEEM
     # TO WORK.
-    mj.set_mjcb_control(controller)
+    # mj.set_mjcb_control(controller)
     pass
 # else:
 #     # use prerecorded torque values if this is the case
@@ -302,19 +303,20 @@ perturbation_thread = threading.Thread \
     (target=generate_large_impulse, 
     daemon=True, 
     args=(perturbation_queue,perturbation_time, perturbation_magnitude, perturbation_period) )
-perturbation_thread.start()
+# perturbation_thread.start()
 start_time = time.time()
 
 sim_exit_flag = False
-while not glfw.window_should_close(window): # glfw.window_should_close() indicates whether or not the user has closed the window
+while not glfw.window_should_close(window) or sim_exit_flag:
     simstart = data.time
     
-    while (data.time - simstart < 1.0/60.0):
+    while (data.time - simstart < 1.0/60.0) or sim_exit_flag:
         # print(data.qpos[0])
         # print(f'time delta: {time.time() - start_time}')
-
+        data.ctrl[0] = 1
+        data.ctrl[1] = 1
         if data.qpos[0] > np.pi/4 or data.qpos[0] < -np.pi/4:
-            simend = data.time 
+            sim_exit_flag = True 
         #print(f'sensor data: {data.sensordata[0]}')
         # if we aren't using the PD control mode and instead using prerecorded data, then
         # we should set the control input to the nth value of the recorded torque array
@@ -323,7 +325,7 @@ while not glfw.window_should_close(window): # glfw.window_should_close() indicat
         #print(f"simulation time: {data.time}")
         # step the simulation forward in time
         mj.mj_step(model, data)
-
+    
         # collect data from the control log if it isn't empty, this is used in the PD control mode
         if not control_log_queue.empty():
             control_log_array = np.vstack((control_log_array, control_log_queue.get()))
@@ -351,7 +353,7 @@ while not glfw.window_should_close(window): # glfw.window_should_close() indicat
         # orientation_matrix = np.reshape(orientation_vector, (3,3))
         body_orientation_data = np.vstack((body_orientation_data, orientation_vector))
     
-    if (data.time>=simend):
+    if (data.time>=simend) or sim_exit_flag:
         break;
     
     # get framebuffer viewport
@@ -389,7 +391,7 @@ glfw.terminate()
 impulse_thread_exit_flag = True
 
 # need this to turn off the pertuabtion thread when the simulation code is done running
-perturbation_thread.join()
+# perturbation_thread.join()
 
 ##### PLOTTING CODE ######################
 ##########################################
@@ -404,14 +406,14 @@ perturbation_thread.join()
 # plot_columns(perturbation_data_array, "perturbation versus time")
 # plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
 # plot_columns(joint_velocity_data, "Joint Velocity")
-plot_four_columns(joint_position_data, 
-                  goal_position_data, 
-                  joint_velocity_data, 
-                  control_log_array,
-                  "joint actual pos.",
-                  "joint goal pos.",
-                  "joint vel.",
-                  "control torque")
+# plot_four_columns(joint_position_data, 
+#                   goal_position_data, 
+#                   joint_velocity_data, 
+#                   control_log_array,
+#                   "joint actual pos.",
+#                   "joint goal pos.",
+#                   "joint vel.",
+#                   "control torque")
 
 ###########################################
 ###########################################

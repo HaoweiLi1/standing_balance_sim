@@ -1,0 +1,142 @@
+<mujoco model="Leg">
+  <!-- SET GRAVITY TO POINT DOWN -->
+  <option gravity="0 0 -9.81">
+    <!-- FLAG TO ADD NOISE TO SENSORS -->
+    <flag sensornoise="enable"/>
+  </option>
+
+  <!-- VISUAL SETUP STUFF THAT I DON'T FULLY UNDERSTAND YET -->
+  <visual>
+    <map zfar="30"/>
+    <!-- <scale forcewidth="0.1" contactwidth="0.1" contactheight="0.1" connect="0.1" com="0.4" selectpoint="0.2" jointlength="0.1" jointwidth="0.1" actuatorlength="0.7" actuatorwidth="0.2" framelength="1" framewidth="0.1"/> -->
+    <rgba haze="0.15 0.25 0.35 1" />
+    <!-- force="1 0.5 0.5 1" contactforce="0.7 0.9 0.9 1" com="0.9 0.9 0.9 1"/> -->
+    <!-- <global offwidth="2560" offheight="1440" elevation="-20" azimuth="120"/> -->
+  </visual>
+
+  <!-- DON'T KNOW WHAT THIS DOES YET -->
+  <statistic center="0 0 0.7"/>
+
+  <!-- NOT SURE EXACTLY WHAT THIS STUFF DOES, BUT IT SETS UP THE CAMERA AND FLOOR -->
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1=".3 .5 .7" rgb2="0 0 0" width="32" height="512"/>
+    <texture name="body" type="cube" builtin="flat" mark="cross" width="128" height="128" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01"/>
+    <material name="body" texture="body" texuniform="true" rgba="0.8 0.6 .4 1"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+    <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
+  </asset>
+
+  <!-- SECTION TO DEFINE GEOMETRIES AND JOINTS -->
+  <default>
+    <motor ctrlrange="-1 1" ctrllimited="true"/>
+    <default class="body">
+
+      <!-- geoms -->
+      <!-- ALL GEOMETRIES ARE CAPSULE TYPE -->
+      <geom type="capsule" mass="10" condim="1" friction="0.7 0.005 0.0001" solimp=".9 .99 .003" solref=".015 1" material="body" group="1"/>
+      
+      <!-- SHIN GEOMETRY -->
+      <default class="shin">
+        <geom size="0.045 0.045 1.78"/>  <!--pos="0 0 .07"/> -->
+      </default>
+
+
+      <!-- FOOT GEOMETRY -->
+      <default class="foot">
+        <geom type='capsule' size=".035" friction="0.9 0 0" solimp=".9 .99 .003" solref=".015 1" mass="2"/>
+        <!-- LEFT HALF OF FOOT -->
+        <default class="foot1">
+          <geom fromto="-.07 0 0 .14 0 0"/>
+        </default>
+        <!-- RIGHT HALF OF FOOT -->
+        <default class="foot2">
+          <geom fromto="-.07 .02 0 .14 .02 0"/>
+        </default>
+       </default>
+
+      <!-- joints -->
+      <!-- KNEE JOINT; MUST DEFINE AS FREE JOINT SO LEG FLOATS -->
+      <default class="knee">
+        <joint type="hinge" pos="0 0 .02" range="-160 160"/>
+      </default>
+      <!-- MAKE ALL ANKLE JOINTS HINGE JOINTS -->
+      <joint type="hinge" damping=".2" stiffness="1" armature=".01" limited="true" solimplimit="0 .99 .01"/>
+      <default class="ankle">
+        <joint range="-50 50"/>
+        
+        <!-- Y-AXIS JOINT (+Y AXIS GOES INTO SCREEN) -->
+        <default class="ankle_y">
+          <joint pos="0 0 .04" axis="0 1 0" stiffness="6"/>
+        </default>
+        
+        <!-- X-AXIS JOINT (+X AXIS GOES TO THE RIGHT SIDE OF SCREEN) -->
+        <default class="ankle_x">
+          <joint pos="0 0 .04" stiffness="3"/>
+        </default>
+      </default>  
+
+    </default>
+  </default>
+
+    <!-- DEFINE THE LEG, STARTING FROM THE WORLDBODY FRAME? -->
+	<worldbody>
+      <!-- DEFINE THE FLOOR IN THE ENVIRONMENT -->
+      <geom name="ground" size="0 0 .05" type="plane" material="grid" condim="3" friction='0.99 0.99 0.99' solimp=".9 .99 .003" solref=".015 1"/>
+      
+      <!-- LIGHT SETTING -->
+      <light name="spotlight" mode="targetbodycom" target="shin_right" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30"/>
+      
+      <!-- <body name = "plane_body" pos="0 0 1"> -->
+        <!-- <geom type="plane" size="10 0.1 10" rgba="0.5 0.5 0.5 1"/> -->
+        
+        <!-- BODY FOR SHIN; CAN HAVE MAX 6-DOF -->
+        <body name="shin_right" pos="0 0 2.5">
+          <!-- <joint name="knee_right" class="knee"/> -->
+          <geom name="shin_geom" class="shin"/>
+
+          <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
+          <joint type="hinge" name="joint_hinge" axis="0 1 0"/>
+      
+          <!-- Create prismatic joints to constrain motion along the x and z directions -->
+          <joint type="slide" name="joint_slide_x" axis="1 0 0"/>
+          <joint type="slide" name="joint_slide_z" axis="0 0 1"/>
+    
+
+          <!-- BODY FOR FOOT; AGAIN I THINK MAX OF 6-DOF PER BODY? -->
+          <body name="le_foot" pos="-0.01 0 -0.32">
+            <!-- add joints and geometries for left and right halves of foot -->
+            <!-- <joint name="ankle_x_right" class="ankle_x" axis="1 0 .5"/> -->
+            <joint name="ankle_y_right" class="ankle_y"/>
+            <!-- <geom name="foot1_right" class="foot1"/> -->
+            <geom name="foot1_right" class="foot2"/>
+          </body>
+
+          <!-- <body name='big_toe' pos="0.1 0 -0.39">
+            <joint name="toey_mctoe" type="hinge" range="-5 5"/>
+            <geom name="mr_toe" type="sphere" size='0.025'/>
+          </body> -->
+
+        </body>
+      <!-- </body> -->
+      <!-- END OF DEFINING THE LEG IN 3D SPACE -->
+	</worldbody>
+	
+    <!-- ACTUATORS FOR THE ANKLE JOINTS -->
+	<actuator>
+      <!-- <motor joint="ankle_x_right" name="ankle_actuator_x" gear="20"/>
+      <position name="position_servo_x_right" joint="ankle_x_right" kp="10"/>
+	    <velocity name="velocity_servo_x_right" joint="ankle_x_right" kv="0"/> -->
+      <!-- <motor joint="shin_right" name="shin_actuator"/> -->
+      <motor joint="ankle_y_right" name="ankle_actuator_y" gear="144"/>
+      <!-- <motor joint="ankle_y_right" name="exo_ankle_actuator_y" gear="144"/> -->
+	</actuator>
+
+    <!-- SENSORS FOR THE ANKLE JOINTS -->
+	<sensor>
+      <!-- <jointpos joint='joint_hinge'/> -->
+      <jointpos joint="ankle_y_right" />
+      <!-- <jointvel joint="ankle_y_right" noise ="0.1"/> -->
+      <!-- <jointpos joint="ankle_x_right" noise="0.1"/>
+      <jointvel joint="ankle_x_right" noise ="1"/> -->
+	</sensor>
+</mujoco>

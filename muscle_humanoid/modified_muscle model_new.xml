@@ -29,7 +29,7 @@
 
   
   <default>
-    <motor ctrlrange="-0.5 0.5" ctrllimited="true" />
+    <motor ctrlrange="-1 1" ctrllimited="true" />
     <default class="body">
 
       
@@ -53,7 +53,7 @@
       <light name="spotlight" mode="targetbodycom" target="foot" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30" />
     
         
-        <body name="foot" pos="0 0 0.08">
+        <body name="foot" pos="0 0 0">
           
       
           
@@ -79,12 +79,12 @@
 	
   <contact>
     
-    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" friction="0.99 0.99 0.99 0.99 0.99" />
+    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" friction="0.5 0.5 0.99 0.99 0.99" />
   </contact>
 
     
 	<actuator>
-      <motor joint="ankle_hinge" name="shin_actuator" gear="200" ctrlrange="-.5 .5" />
+      <motor joint="ankle_hinge" name="shin_actuator" gear="170" />
       <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40" />
 	</actuator>
 

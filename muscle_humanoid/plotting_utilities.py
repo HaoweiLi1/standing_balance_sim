@@ -146,7 +146,7 @@ def plot_four_columns(data_array1, data_array2, data_array3, data_array4, y_axis
     # Plot the data for each array
     plt.plot(x_values, y_values1, linestyle='-', color='b', label=y_axis1)
     plt.plot(x_values, y_values2, linestyle='-', color='r', label=y_axis2)
-    plt.plot(x_values, y_values3, linestyle='-', color='g', label=y_axis3)
+    # plt.plot(x_values, y_values3, linestyle='-', color='g', label=y_axis3)
     plt.plot(x_values, y_values4, linestyle='-', color='purple', label=y_axis4)
 
     # Add labels and a title
