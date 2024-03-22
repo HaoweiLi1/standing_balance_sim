@@ -85,14 +85,14 @@
 	
   <!-- Define the tendon -->
   <tendon>
-    <spatial name="front_tendon" limited="true" range="0.7 1.05" width="0.0075">
+    <spatial name="front_tendon" limited="true" range="0.1 0.7" width="0.0075" springlength="-1" stiffness="1">
       <site site="front_foot_site"/>
       <site site="front_shin_site"/>
     </spatial>
   </tendon>
 
   <tendon>
-    <spatial name="back_tendon" limited="true" range="0.7 1.05" width="0.0075">
+    <spatial name="back_tendon" limited="true" range="0.1 0.7" width="0.0075" springlength="-1" stiffness="1">
       <site site="back_foot_site"/>
       <site site="back_shin_site"/>
     </spatial>
@@ -108,8 +108,8 @@
 	<actuator>
       <!-- <motor joint="ankle_hinge" name="shin_actuator" gear="170"/> -->
       <!-- <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/> -->
-      <muscle name="front_muscle" tendon="front_tendon" gear="40"/>
-      <muscle name="back_muscle" tendon="back_tendon" gear="40"/>
+      <muscle name="front_muscle" tendon="front_tendon" gear="100" ctrlrange="-1 1" force="0.5"/>
+      <muscle name="back_muscle" tendon="back_tendon" gear="100" ctrlrange="-1 1" force="10"/>
   </actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->

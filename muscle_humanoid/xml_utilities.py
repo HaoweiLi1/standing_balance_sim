@@ -35,7 +35,7 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
     # modify the mesh which composes the foot geom in this model
     for mesh in root.iter('mesh'):
         if mesh.get('name') == "foot_mesh":
-            mesh.set('vertex', f"{-l_foot/2} 0 0  {l_foot/2} 0 0  0 -0.035 0  0 0.035 0  {l_foot/2-a} 0 {h_f}")
+            mesh.set('vertex', f"{-l_foot/2} 0 0  {l_foot} 0 0  0 -0.035 0  0 0.035 0  {l_foot/2-a} 0 {h_f}")
 
     # modify properties of various bodies in the model
     for body in root.iter('body'):
@@ -79,7 +79,7 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
             site.set('pos', f"-0.0125 0 {3*h_f}")
 
         elif site.get('name') == "back_foot_site":
-            site.set('pos', f"{l_foot/2} 0 0.05")
+            site.set('pos', f"{l_foot} 0 0.05")
 
         elif site.get('name') == "back_shin_site":
             site.set('pos', f"0.0125 0 {3*h_f}")
