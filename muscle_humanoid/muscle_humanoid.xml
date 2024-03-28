@@ -17,19 +17,26 @@
   <!-- DON'T KNOW WHAT THIS DOES YET -->
   <statistic center="0 0 0.7"/>
 
-  <!-- NOT SURE EXACTLY WHAT THIS STUFF DOES, BUT IT SETS UP THE CAMERA AND FLOOR -->
+  <!-- Set up default texture and material parameters for the bodies in the simulation and the ground in the simulation -->
   <asset>
+    <!-- this makes the sky blue in the simulation: -->
     <texture type="skybox" builtin="gradient" rgb1=".3 .5 .7" rgb2="0 0 0" width="32" height="512"/>
+
+    <!-- configure the texture and material of the default body created in a simulation -->
     <texture name="body" type="cube" builtin="flat" mark="cross" width="128" height="128" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01"/>
     <material name="body" texture="body" texuniform="true" rgba="0.8 0.6 .4 1"/>
+
+    <!-- configure the default texture and material for the ground of the simulation -->
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
+
+    <!-- create triangle mesh to represent foot -->
     <mesh name="foot_mesh" vertex="-1 0 0  1 0 0  0 -1 0  0 1 0  0.25 0 0.5"/>
   </asset>
 
   <!-- SECTION TO DEFINE GEOMETRIES AND JOINTS -->
   <default>
-    <motor ctrlrange="-1 1" ctrllimited="true"/>
+
     <default class="body">
 
       <!-- geoms -->
@@ -73,6 +80,7 @@
           <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
             <joint type="hinge" name="ankle_hinge" axis="0 -1 0"/>
             <geom name="shin_geom" class="shin"/>
+            <geom name="m_body" type="sphere" size="0.05" pos="0 0 0.75"/>
             <site name="front_shin_site" pos="-0.0125 0 0.5" size="0.01 0.01 0.01"/>
             <site name="back_shin_site" pos="0.0125 0 0.5" size="0.01 0.01 0.01"/>
 
@@ -108,8 +116,8 @@
 	<actuator>
       <!-- <motor joint="ankle_hinge" name="shin_actuator" gear="170"/> -->
       <!-- <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/> -->
-      <muscle name="front_muscle" tendon="front_tendon" gear="100" ctrlrange="-1 1" force="0.5"/>
-      <muscle name="back_muscle" tendon="back_tendon" gear="100" ctrlrange="-1 1" force="10"/>
+      <muscle name="front_muscle" tendon="front_tendon" force="1000"/>
+      <muscle name="back_muscle" tendon="back_tendon" force="1000"/>
   </actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->

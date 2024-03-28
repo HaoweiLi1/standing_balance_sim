@@ -19,17 +19,24 @@
 
   
   <asset>
+    
     <texture type="skybox" builtin="gradient" rgb1=".3 .5 .7" rgb2="0 0 0" width="32" height="512" />
+
+    
     <texture name="body" type="cube" builtin="flat" mark="cross" width="128" height="128" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01" />
     <material name="body" texture="body" texuniform="true" rgba="0.8 0.6 .4 1" />
+
+    
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4" />
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2" />
+
+    
     <mesh name="foot_mesh" vertex="-0.13528 0 0  0.27056 0 0  0 -0.035 0  0 0.035 0  0.0838736 0 0.178" />
   </asset>
 
   
   <default>
-    <motor ctrlrange="-1 1" ctrllimited="true" />
+
     <default class="body">
 
       
@@ -53,7 +60,7 @@
       <light name="spotlight" mode="targetbodycom" target="foot" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30" />
     
         
-        <body name="foot" pos="0 0 0">
+        <body name="foot" pos="0 0 0.1">
           
       
           
@@ -72,7 +79,8 @@
           
           
             <joint type="hinge" name="ankle_hinge" axis="0 -1 0" pos="0 0 0" />
-            <geom name="shin_geom" class="shin" fromto="0 0 1.78 0 0 0" mass="77.68" />
+            <geom name="shin_geom" class="shin" mass="0" fromto="0 0 1.78 0 0 0" />
+            <geom name="m_body" type="sphere" size="0.05" pos="0 0 0.75" mass="77.68" />
             <site name="front_shin_site" pos="-0.0125 0 0.534" size="0.01 0.01 0.01" />
             <site name="back_shin_site" pos="0.0125 0 0.534" size="0.01 0.01 0.01" />
 
@@ -108,8 +116,8 @@
 	<actuator>
       
       
-      <muscle name="front_muscle" tendon="front_tendon" gear="100" ctrlrange="-1 1" force="0.5" />
-      <muscle name="back_muscle" tendon="back_tendon" gear="100" ctrlrange="-1 1" force="10" />
+      <muscle name="front_muscle" tendon="front_tendon" force="1000" />
+      <muscle name="back_muscle" tendon="back_tendon" force="1000" />
   </actuator>
 
     

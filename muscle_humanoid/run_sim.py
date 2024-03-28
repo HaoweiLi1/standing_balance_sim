@@ -30,7 +30,7 @@ from xml_utilities import calculate_kp_and_geom, set_geometry_params
 #     'xtick.labelsize': 10,
 #     'ytick.labelsize': 10,
 #     })
-ankle_position_setpoint = 5*np.pi/180 # ankle joint angle position setpoint
+ankle_position_setpoint = 2.5*np.pi/180 # ankle joint angle position setpoint
 mpl.rcParams.update(mpl.rcParamsDefault)
 control_mode = "torque"               # Set the control type to use - presently just proportional torque controller
 # this function is a thread that uses imulse_thread_exit_flag (global variable)
@@ -83,7 +83,7 @@ def controller(model, data):
     """
     bb_ctrl = 200
     error = ankle_position_setpoint - data.sensordata[0]
-    print(f'error {error}')
+    # print(f'error {round(error,5)}')
     # tendon bang-bang controller
     if error > 0:
         data.ctrl[0] = bb_ctrl
@@ -197,7 +197,7 @@ class muscleSim:
         # opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
         opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
         opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = True
-        opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
+        # opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
         # opt.flags[mj.mjtLabel.mjLABEL_JOINT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
         # opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
@@ -261,7 +261,7 @@ class muscleSim:
             # TO MUJOCO THING THAT DOES CONTROL... DONT FULLY
             # UNDERSTAND WHAT IS GOING ON HERE BUT IT DOES SEEM
             # TO WORK.
-            mj.set_mjcb_control(controller)
+            # mj.set_mjcb_control(controller)
             pass
         # else:
         #     # use prerecorded torque values if this is the case
@@ -285,8 +285,8 @@ class muscleSim:
             while (data.time - simstart < 1.0/60.0):
                 # print(data.qpos[0])
                 # print(f'time delta: {time.time() - start_time}')
-                data.ctrl[0] = 1
-                data.ctrl[1] = 1
+                # data.ctrl[0] = 1
+                # data.ctrl[1] = 1
                 if data.qpos[0] > np.pi/4 or data.qpos[0] < -np.pi/4:
                     simend = data.time
                 #print(f'sensor data: {data.sensordata[0]}')
@@ -341,12 +341,12 @@ class muscleSim:
 
             ###### CODE TO CAPTURE FRAMES FOR MP4 VIDEO GENERATION ##########
             # Capture the frame
-            rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
-            depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
-            mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
-            rgb_array = np.flipud(rgb_array)
+            # rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
+            # depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
+            # mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
+            # rgb_array = np.flipud(rgb_array)
             # # Append the frame to the list
-            frames.append(rgb_array) 
+            # frames.append(rgb_array) 
             #################################################################
 
             # swap OpenGL buffers (blocking call due to v-sync)
@@ -356,7 +356,7 @@ class muscleSim:
             glfw.poll_events()
 
         # this writes the list of frames we collected to an mp4 file and makes it a video
-        imageio.mimwrite(video_file, frames, fps=video_fps)
+        # imageio.mimwrite(video_file, frames, fps=video_fps)
         print('terminated')
         glfw.terminate()
 

@@ -18,9 +18,11 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
     # modify properties of various geoms in the model
     for geom in root.iter('geom'):
         if geom.get('name') == "shin_geom":
-
+            geom.set('mass', "0")
             geom.set('fromto', f'0 0 {H_total} 0 0 0')
             # geom.set('pos', f'0 0 {H_total-l_COM}')
+
+        elif geom.get('name') == "m_body":
             geom.set('mass', str(m_body))
             # geom.set('size', 0.05)
 
@@ -42,7 +44,7 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
             if body.get('name') == "foot":
                 # poo = body.get('pos')
                 # print(f'pos: {poo}')
-                body.set('pos',  f'0 0 0')
+                body.set('pos',  f'0 0 0.1')
 
             elif body.get('name') == "shin_body":
                 # size = float(body.get('size'))
