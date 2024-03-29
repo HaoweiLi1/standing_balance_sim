@@ -14,7 +14,16 @@ Contact Aware Physics Simulation of Human Standing Balance - University of Michi
 5. [MuJoCo Simulation Reference](https://mujoco.readthedocs.io/en/latest/programming/simulation.html#forward-dynamics)
 6. [MuJoCo Visualization Reference](https://mujoco.readthedocs.io/en/latest/programming/visualization.html#rendering)
 
+# **Experiments:**
+
+**Gravity Compensation:**
+
 https://github.com/celwell20/standing_balance_sim/assets/79417604/ced4d7cc-f339-49a1-a985-7fb13aeb1961
 
-Gravity Compensation
+
+**Muscle-Tendon Bang-Bang Controller:**
+
+https://github.com/celwell20/standing_balance_sim/assets/79417604/91280a26-1ead-49bb-a67c-9c388991b003
+
+
 
