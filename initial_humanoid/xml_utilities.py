@@ -3,7 +3,7 @@ def calculate_kp_and_geom(weight, height):
     
     M_total = weight # [kg]
     H_total = height # [meters]
-    m_feet = 2 * 0.0145 * M_total
+    m_feet = 0.5 * M_total
     m_body = M_total - m_feet
     l_COM = 0.575*H_total
     l_foot = 0.152*H_total
@@ -17,16 +17,14 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
 
     for geom in root.iter('geom'):
         if geom.get('name') == "shin_geom":
-
+            geom.set('mass', "0")
             geom.set('fromto', f'0 0 {H_total} 0 0 0')
             # geom.set('pos', f'0 0 {H_total-l_COM}')
+
+        elif geom.get('name') == "m_body":    
             geom.set('mass', str(m_body))
+            geom.set('pos', f"0 0 {l_COM}")
             # geom.set('size', 0.05)
-
-        elif geom.get('name') == "foot1_right":
-
-            geom.set('fromto', f'0 .02 0 {l_foot} .02 0')
-            geom.set('mass', str(m_feet))
         
         elif geom.get('name') == "foot":
             geom.set('pos', f'0 0 0')
@@ -35,7 +33,7 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
             if body.get('name') == "foot":
                 # poo = body.get('pos')
                 # print(f'pos: {poo}')
-                body.set('pos',  f'0 0 0.08')
+                body.set('pos',  f'0 0 0')
 
             elif body.get('name') == "shin_body":
                 # size = float(body.get('size'))
@@ -60,4 +58,6 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
 
     for mesh in root.iter('mesh'):
         if mesh.get('name') == "foot_mesh":
-            mesh.set('vertex', f"{-l_foot/2} 0 0  {l_foot/2} 0 0  0 -0.035 0  0 0.035 0  {l_foot/2-a} 0 {h_f}")
+            mesh.set('vertex', f"{-l_foot/2} 0 0  {l_foot} 0 0  0 -0.05 0  0 0.05 0  {l_foot/2} 0 {h_f}")
+            # geom.set('mass', str(m_feet))
+            # mesh.set('vertex', f"{-l_foot/2} 0 0  {l_foot/2} 0 0  0 -0.035 0  0 0.035 0  {l_foot/2-a} 0 {h_f}")

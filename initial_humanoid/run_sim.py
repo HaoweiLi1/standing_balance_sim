@@ -20,18 +20,18 @@ from plotting_utilities import plot_3d_pose_trajectory, \
 
 from xml_utilities import calculate_kp_and_geom, set_geometry_params
 
-xml_path = 'initial_humanoid.xml'     # XML file path
+xml_path = 'leg.xml'     # XML file path
 simend = 10                            # duration of simulation
 K_p = 1                               # predefining proportional gain for controller 
 # K_d = 0.001
 impulse_thread_exit_flag = False      # Bool used to stop impulse thread from running
 control_mode = "torque"               # Set the control type to use - presently just proportional torque controller
-ankle_position_setpoint = 5*np.pi/180 # ankle joint angle position setpoint
+ankle_position_setpoint = 1*np.pi/180 # ankle joint angle position setpoint
 prev_error = 0.
 ankle_joint_initial_position = ankle_position_setpoint # ankle joint initial angle
 
-translation_friction_constant = 0.99
-rolling_friction_constant = 0.99
+translation_friction_constant = 1
+rolling_friction_constant = 1
 
 perturbation_time = 0.5              # parameter that sets pulse width of impulse
 perturbation_magnitude = 400          # size of impulse
@@ -302,7 +302,7 @@ perturbation_thread = threading.Thread \
     (target=generate_large_impulse, 
     daemon=True, 
     args=(perturbation_queue,perturbation_time, perturbation_magnitude, perturbation_period) )
-perturbation_thread.start()
+# perturbation_thread.start()
 start_time = time.time()
 
 sim_exit_flag = False
@@ -352,6 +352,8 @@ while not glfw.window_should_close(window): # glfw.window_should_close() indicat
         body_orientation_data = np.vstack((body_orientation_data, orientation_vector))
     
     if (data.time>=simend):
+        impulse_thread_exit_flag = True
+        # perturbation_thread.join()
         break;
     
     # get framebuffer viewport
@@ -367,12 +369,12 @@ while not glfw.window_should_close(window): # glfw.window_should_close() indicat
 
     ###### CODE TO CAPTURE FRAMES FOR MP4 VIDEO GENERATION ##########
     # Capture the frame
-    # rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
-    # depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
-    # mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
-    # rgb_array = np.flipud(rgb_array)
-    # # # Append the frame to the list
-    # frames.append(rgb_array) 
+    rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
+    depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
+    mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
+    rgb_array = np.flipud(rgb_array)
+    # # Append the frame to the list
+    frames.append(rgb_array) 
     #################################################################
 
     # swap OpenGL buffers (blocking call due to v-sync)
@@ -386,10 +388,9 @@ while not glfw.window_should_close(window): # glfw.window_should_close() indicat
 print('terminated')
 glfw.terminate()
 
-impulse_thread_exit_flag = True
 
 # need this to turn off the pertuabtion thread when the simulation code is done running
-perturbation_thread.join()
+
 
 ##### PLOTTING CODE ######################
 ##########################################

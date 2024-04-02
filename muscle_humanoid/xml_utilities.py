@@ -24,6 +24,7 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
 
         elif geom.get('name') == "m_body":
             geom.set('mass', str(m_body))
+            geom.set('pos', f"0 0 {0.575*H_total}")
             # geom.set('size', 0.05)
 
         # elif geom.get('name') == "foot1_right":
@@ -44,7 +45,7 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
             if body.get('name') == "foot":
                 # poo = body.get('pos')
                 # print(f'pos: {poo}')
-                body.set('pos',  f'0 0 0.1')
+                body.set('pos',  f'0 0 0')
 
             elif body.get('name') == "shin_body":
                 # size = float(body.get('size'))

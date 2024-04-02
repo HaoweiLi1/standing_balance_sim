@@ -19,12 +19,18 @@
 
   <!-- NOT SURE EXACTLY WHAT THIS STUFF DOES, BUT IT SETS UP THE CAMERA AND FLOOR -->
   <asset>
+  <!-- this makes the sky blue in the simulation: -->
     <texture type="skybox" builtin="gradient" rgb1=".3 .5 .7" rgb2="0 0 0" width="32" height="512"/>
+    
+    <!-- configure the texture and material of the default body created in a simulation -->
     <texture name="body" type="cube" builtin="flat" mark="cross" width="128" height="128" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01"/>
     <material name="body" texture="body" texuniform="true" rgba="0.8 0.6 .4 1"/>
+    
+     <!-- configure the default texture and material for the ground of the simulation -->
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
-    <mesh name="foot_mesh" vertex="-1 0 0  1 0 0  0 -1 0  0 1 0  0.25 0 0.5"/>
+    
+    <!-- <mesh name="foot_mesh" vertex="-1 0 0  1 0 0  0 -1 0  0 1 0  0.25 0 0.5"/> -->
   </asset>
 
   <!-- SECTION TO DEFINE GEOMETRIES AND JOINTS -->
@@ -34,7 +40,7 @@
 
       <!-- geoms -->
       <!-- ALL GEOMETRIES ARE CAPSULE TYPE -->
-      <geom type="capsule" mass="10" condim="1" friction="0.7 0.005 0.0001" solimp=".9 .99 .003" solref=".015 1" material="body" group="1"/>
+      <geom type="capsule" mass="10" condim="1" friction="0.99 0.99 0.99" solimp=".9 .99 .003" solref=".015 1" material="body" group="1"/>
       
       <!-- SHIN GEOMETRY -->
       <default class="shin">
@@ -61,7 +67,7 @@
           <joint type="slide" name="joint_slide_x" axis="-1 0 0"/>
           <joint type="slide" name="joint_slide_z" axis="0 0 1"/>
   
-          <geom type="mesh" mesh="foot_mesh" name="foot_geom"/>
+          <geom type="mesh" mesh="foot_mesh" name="foot_geom" friction=".99 .99 .99"/>
           <body name="shin_body">
           
           
@@ -69,7 +75,8 @@
           <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
             <joint type="hinge" name="ankle_hinge" axis="0 -1 0"/>
             <geom name="shin_geom" class="shin"/>
-
+            <geom name="m_body" type="sphere" size="0.05" pos="0 0 0.75"/>
+            
           </body>
 
         </body>
@@ -84,7 +91,7 @@
 
     <!-- ACTUATORS FOR THE ANKLE JOINTS -->
 	<actuator>
-      <motor joint="ankle_hinge" name="shin_actuator" gear="200" ctrlrange="-.5 .5"/>
+      <motor joint="ankle_hinge" name="shin_actuator" gear="150" ctrlrange="-0.5 0.5"/>
       <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/>
 	</actuator>
 

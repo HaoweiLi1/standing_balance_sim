@@ -37,42 +37,14 @@ control_mode = "torque"               # Set the control type to use - presently 
 # not sure if there is a way to move this function to a utility script without 
 # preventing function from accessing impulse_thread_exit_flag
 # precallocating arrays and queues for data sharing and data collection
-
+# impulse_thread_exit_flag = False
 perturbation_queue = Queue()
 control_log_queue = Queue()
 counter_queue = Queue()
 perturbation_datalogger_queue = Queue()
 K_p = 1                               # predefining proportional gain for controller 
 
-def generate_large_impulse(perturbation_queue, impulse_time, perturbation_magnitude, impulse_period):
-            
-            while not impulse_thread_exit_flag: # run continuously once we start a thread 
-                        # for this function
-                
-                # empty the queue from the previous impulse generation
-                while not perturbation_queue.empty():
-                    perturbation_queue.get()
 
-                wait_time = np.random.uniform(impulse_period,impulse_period+1)
-                time.sleep(wait_time)
-                
-                # Generate a large impulse
-                perturbation = np.random.uniform(perturbation_magnitude, perturbation_magnitude+10)
-
-                # this will generate either -1 or 1
-                direction_bool = np.random.choice([-1,1])
-                # print(direction_bool)
-                # start_time = time.time()
-                # delta = time.time() - start_time
-                end_time = time.time() + impulse_time
-                print(time.time())
-                print(end_time)
-                while time.time() < end_time:
-                    # delta = time.time() - start_time
-                    # time.sleep(0.0000000001)
-                    print(f"impulse duration: {end_time-time.time()}")
-                    # Put the generated impulse into the result queue
-                    perturbation_queue.put(direction_bool*perturbation)
 
 # this function has to stay in this script per MuJoCo documentation
 def controller(model, data):
@@ -81,7 +53,7 @@ def controller(model, data):
     for this function can be mujoco.model and mujoco.data
     otherwise it doesn't seem to run properly
     """
-    bb_ctrl = 200
+    bb_ctrl = 1
     error = ankle_position_setpoint - data.sensordata[0]
     # print(f'error {round(error,5)}')
     # tendon bang-bang controller
@@ -114,6 +86,42 @@ class muscleSim:
     def __init__(self, plot_flag):
         print('simulation class object created')    
         self.plot_flag = plot_flag
+        self.impulse_thread_exit_flag = True
+
+    def generate_large_impulse(self, perturbation_queue, impulse_time, perturbation_magnitude, impulse_period):
+            
+
+            print(f'exit flag: {self.impulse_thread_exit_flag}')
+            while not self.impulse_thread_exit_flag: # run continuously once we start a thread 
+                        # for this function
+                
+                # empty the queue from the previous impulse generation
+                while not perturbation_queue.empty():
+                    perturbation_queue.get()
+
+                wait_time = np.random.uniform(impulse_period,impulse_period+1)
+                time.sleep(wait_time)
+                
+                # Generate a large impulse
+                perturbation = np.random.uniform(perturbation_magnitude, perturbation_magnitude+10)
+
+                # this will generate either -1 or 1
+                direction_bool = np.random.choice([-1,1])
+                # print(direction_bool)
+                # start_time = time.time()
+                # delta = time.time() - start_time
+                end_time = time.time() + impulse_time
+                print(time.time())
+                print(end_time)
+                i = 0
+                while time.time() < end_time:
+                    # delta = time.time() - start_time
+                    # time.sleep(0.000001)
+                    if i % 1000 == 0:
+                        print(f"impulse duration: {end_time-time.time()}")
+                    i+=1
+                    # Put the generated impulse into the result queue
+                    perturbation_queue.put(direction_bool*perturbation)
 
     def run(self):
         
@@ -128,8 +136,6 @@ class muscleSim:
         xml_path = 'muscle_humanoid.xml'     # XML file path
         simend = 5                            # duration of simulation
         
-        impulse_thread_exit_flag = False      # Bool used to stop impulse thread from running
-        
         ankle_position_setpoint = 5*np.pi/180 # ankle joint angle position setpoint
         ankle_joint_initial_position = ankle_position_setpoint # ankle joint initial angle
 
@@ -137,7 +143,7 @@ class muscleSim:
         rolling_friction_constant = 0.9
 
         perturbation_time = 0.25              # parameter that sets pulse width of impulse
-        perturbation_magnitude = 300          # size of impulse
+        perturbation_magnitude = 20          # size of impulse
         perturbation_period = 2               # period at which impulse occurs
 
         
@@ -194,7 +200,7 @@ class muscleSim:
         mj.mjv_defaultOption(opt)
         # opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
         # opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
-        # opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
+        opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
         opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
         opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = True
         # opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
@@ -245,7 +251,7 @@ class muscleSim:
         # data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
         # data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
         # data.qpos[2]=-np.pi/6   # slide / prismatic joint at top of body in z direction
-        # data.qpos[3]= ankle_joint_initial_position # hinge joint at ankle
+        data.qpos[3]= ankle_joint_initial_position # hinge joint at ankle
 
         # ID number for the ankle joint, used for data collection
         ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
@@ -261,7 +267,7 @@ class muscleSim:
             # TO MUJOCO THING THAT DOES CONTROL... DONT FULLY
             # UNDERSTAND WHAT IS GOING ON HERE BUT IT DOES SEEM
             # TO WORK.
-            # mj.set_mjcb_control(controller)
+            mj.set_mjcb_control(controller)
             pass
         # else:
         #     # use prerecorded torque values if this is the case
@@ -270,15 +276,14 @@ class muscleSim:
             # print(recorded_torques)
 
         # start the thread that generates the perturbation impulses
-        impulse_thread_exit_flag = False
+        self.impulse_thread_exit_flag = False
         perturbation_thread = threading.Thread \
-            (target=generate_large_impulse, 
+            (target=self.generate_large_impulse, 
             daemon=True, 
             args=(perturbation_queue,perturbation_time, perturbation_magnitude, perturbation_period) )
-        # perturbation_thread.start()
+        perturbation_thread.start()
         start_time = time.time()
 
-        sim_exit_flag = False
         while not glfw.window_should_close(window):
             simstart = data.time
             
@@ -326,6 +331,8 @@ class muscleSim:
                 body_orientation_data = np.vstack((body_orientation_data, orientation_vector))
             
             if (data.time>=simend):
+                self.impulse_thread_exit_flag = True
+                perturbation_thread.join()
                 break;
             
             # get framebuffer viewport
@@ -341,12 +348,12 @@ class muscleSim:
 
             ###### CODE TO CAPTURE FRAMES FOR MP4 VIDEO GENERATION ##########
             # Capture the frame
-            # rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
-            # depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
-            # mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
-            # rgb_array = np.flipud(rgb_array)
-            # # Append the frame to the list
-            # frames.append(rgb_array) 
+            rgb_array = np.empty((viewport_height, viewport_width, 3), dtype=np.uint8)
+            depth_array = np.empty((viewport_height, viewport_width), dtype=np.float32)
+            mj.mjr_readPixels(rgb=rgb_array, depth=depth_array, viewport=viewport, con=context)
+            rgb_array = np.flipud(rgb_array)
+            # Append the frame to the list
+            frames.append(rgb_array) 
             #################################################################
 
             # swap OpenGL buffers (blocking call due to v-sync)
@@ -357,13 +364,13 @@ class muscleSim:
 
         # this writes the list of frames we collected to an mp4 file and makes it a video
         # imageio.mimwrite(video_file, frames, fps=video_fps)
+        
         print('terminated')
         glfw.terminate()
 
-        impulse_thread_exit_flag = True
-
+    
         # need this to turn off the pertuabtion thread when the simulation code is done running
-        # perturbation_thread.join()
+        
 
         ##### PLOTTING CODE ######################
         ##########################################

@@ -60,7 +60,7 @@
       <light name="spotlight" mode="targetbodycom" target="foot" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30" />
     
         
-        <body name="foot" pos="0 0 0.1">
+        <body name="foot" pos="0 0 0">
           
       
           
@@ -80,7 +80,7 @@
           
             <joint type="hinge" name="ankle_hinge" axis="0 -1 0" pos="0 0 0" />
             <geom name="shin_geom" class="shin" mass="0" fromto="0 0 1.78 0 0 0" />
-            <geom name="m_body" type="sphere" size="0.05" pos="0 0 0.75" mass="77.68" />
+            <geom name="m_body" type="sphere" size="0.05" pos="0 0 1.0234999999999999" mass="77.68" />
             <site name="front_shin_site" pos="-0.0125 0 0.534" size="0.01 0.01 0.01" />
             <site name="back_shin_site" pos="0.0125 0 0.534" size="0.01 0.01 0.01" />
 
@@ -116,8 +116,8 @@
 	<actuator>
       
       
-      <muscle name="front_muscle" tendon="front_tendon" force="1000" />
-      <muscle name="back_muscle" tendon="back_tendon" force="1000" />
+      <muscle name="front_muscle" tendon="front_tendon" force="750" />
+      <muscle name="back_muscle" tendon="back_tendon" force="750" />
   </actuator>
 
     

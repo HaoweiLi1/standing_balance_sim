@@ -116,8 +116,8 @@
 	<actuator>
       <!-- <motor joint="ankle_hinge" name="shin_actuator" gear="170"/> -->
       <!-- <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/> -->
-      <muscle name="front_muscle" tendon="front_tendon" force="1000"/>
-      <muscle name="back_muscle" tendon="back_tendon" force="1000"/>
+      <muscle name="front_muscle" tendon="front_tendon" force="750"/>
+      <muscle name="back_muscle" tendon="back_tendon" force="750"/>
   </actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->
