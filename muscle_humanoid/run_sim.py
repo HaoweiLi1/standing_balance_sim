@@ -71,16 +71,6 @@ class muscleSim:
         # Log the actuator torque and timestep to an array for later use
         # control_torque_time_array = np.array([data.time, human_torque])
         # control_log_queue.put(control_torque_time_array)
-
-        x_perturbation=0
-
-        if not perturbation_queue.empty():
-            
-            x_perturbation = perturbation_queue.get()
-            perturbation_datalogger_queue.put(x_perturbation)
-        
-        # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-        data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
         
         # Apply joint perturbations in Joint Space
         # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
@@ -298,6 +288,16 @@ class muscleSim:
                 # print(f'time delta: {time.time() - start_time}')
                 # data.ctrl[0] = 1
                 # data.ctrl[1] = 1
+                x_perturbation=0
+
+                if not perturbation_queue.empty():
+                    
+                    x_perturbation = perturbation_queue.get()
+                    perturbation_datalogger_queue.put(x_perturbation)
+                
+                # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
+                data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
+
                 if data.qpos[0] > np.pi/4 or data.qpos[0] < -np.pi/4:
                     simend = data.time
                 #print(f'sensor data: {data.sensordata[0]}')
@@ -384,10 +384,10 @@ class muscleSim:
         ##########################################
         if self.plot_flag:
             plot_3d_pose_trajectory(body_com_data, body_orientation_data)
-            if control_flag:
-                torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
-                np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
-            plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
+            # if control_flag:
+            #     torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
+            #     np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
+            # plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
             # else:
             #     plot_columns(recorded_torques, 'Control Torque')
             plot_columns(perturbation_data_array, "perturbation versus time")

@@ -72,9 +72,8 @@ class ankleTorqueControl:
         exo_torque = -1*(human_torque)
         data.ctrl[0] = human_torque
         
-        prev_error = error
+        # prev_error = error
             
-        
         # Log the actuator torque and timestep to an array for later use
         control_torque_time_array = np.array([data.time, human_torque])
         control_log_queue.put(control_torque_time_array)
@@ -84,18 +83,6 @@ class ankleTorqueControl:
         #     counter = counter_queue.get()
         # counter += 1
         # counter_queue.put(counter)
-
-        x_perturbation=0
-        
-        # print(time.time())
-
-        if not perturbation_queue.empty():
-            # print(f"perturbation: {perturbation_queue.get()}, time: {time.time()-start}")
-            x_perturbation = perturbation_queue.get()
-            perturbation_datalogger_queue.put(x_perturbation)
-        
-        # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-        data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
         
         # Apply joint perturbations in Joint Space
         # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
@@ -307,6 +294,16 @@ class ankleTorqueControl:
             while (data.time - simstart < 1.0/60.0):
                 # print(data.qpos[0])
                 # print(f'time delta: {time.time() - start_time}')
+
+                x_perturbation=0
+
+                if not perturbation_queue.empty():
+                    # print(f"perturbation: {perturbation_queue.get()}, time: {time.time()-start}")
+                    x_perturbation = perturbation_queue.get()
+                    perturbation_datalogger_queue.put(x_perturbation)
+                
+                # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
+                data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
 
                 if data.qpos[0] > np.pi/4 or data.qpos[0] < -np.pi/4:
                     simend = data.time 

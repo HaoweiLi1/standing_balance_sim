@@ -20,5 +20,5 @@ config:
   simulation_timestep: 0.001
   visualize_contact_force: True
   visualize_perturbation_force: True
-  apply_perturbation: False
+  apply_perturbation: True
   controller_flag: True
