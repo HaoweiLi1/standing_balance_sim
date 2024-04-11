@@ -14,6 +14,9 @@ Contact Aware Physics Simulation of Human Standing Balance - University of Michi
 5. [MuJoCo Simulation Reference](https://mujoco.readthedocs.io/en/latest/programming/simulation.html#forward-dynamics)
 6. [MuJoCo Visualization Reference](https://mujoco.readthedocs.io/en/latest/programming/visualization.html#rendering)
 
+To read from the `config.yaml` file please `pip` install the `pyyaml` libary:
+`python -m pip install pyyaml`
+
 # **Experiments:**
 
 **Gravity Compensation:**
