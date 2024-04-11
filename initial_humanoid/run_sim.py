@@ -13,6 +13,7 @@ import time
 from queue import Queue
 import xml.etree.ElementTree as ET
 import imageio
+import yaml
 from plotting_utilities import plot_3d_pose_trajectory, \
                                plot_columns, \
                                plot_four_columns, \
@@ -45,6 +46,7 @@ class ankleTorqueControl:
         print('simulation class object created')
         self.plot_flag = plot_flag
         self.impulse_threaad_exit_flag = True
+        self.mp4_flag = False
         self.K_p = 1
 
     # this function has to stay in this script per MuJoCo documentation
@@ -133,12 +135,13 @@ class ankleTorqueControl:
                 # Put the generated impulse into the result queue
                 perturbation_queue.put(direction_bool*perturbation)
 
+    def load_params_from_yaml(self, file_path):
+        with open(file_path, 'r') as file:
+            params = yaml.safe_load(file)
+        return params
 
     def run(self):
 
-        
-        self.ankle_position_setpoint = 5*np.pi/180 # ankle joint angle position setpoint
-        ankle_joint_initial_position = self.ankle_position_setpoint # ankle joint initial angle
         # precallocating arrays and queues for data sharing and data collection
         control_log_array = np.empty((1,2))
         goal_position_data = np.empty((1,2))
@@ -147,28 +150,35 @@ class ankleTorqueControl:
         body_com_data = np.empty((1,4))
         body_orientation_data = np.empty((1,9))
         perturbation_data_array = np.empty((1,2))
-
+        
+        params = self.load_params_from_yaml('config.yaml')
+        self.plot_flag = params['config']['plotter_flag']
+        self.mp4_flag = params['config']['mp4_flag']
+        
+        self.ankle_position_setpoint = params['config']['ankle_position_setpoint']
+        ankle_joint_initial_position = self.ankle_position_setpoint # ankle joint initial angle
+        
         # Define parameters for creating and storing an MP4 file of the rendered simulation
-        video_file = 'pose_trajectory.mp4'
-        video_fps = 60  # Frames per second
+        video_file = params['config']['mp4_file_name']
+        video_fps = params['config']['mp4_fps']
         frames = [] # list to store frames
         desired_viewport_height = 912
 
-        translation_friction_constant = 0.9
-        rolling_friction_constant = 0.9
+        translation_friction_constant = params['config']['translation_friction_constant']
+        rolling_friction_constant = params['config']['rolling_friction_constant']
 
-        perturbation_time = 0.5              # parameter that sets pulse width of impulse
-        perturbation_magnitude = 400          # size of impulse
-        perturbation_period = 2               # period at which impulse occurs
+        perturbation_time = params['config']['perturbation_time']
+        perturbation_magnitude = params['config']['perturbation_magnitude']   # size of impulse
+        perturbation_period = params['config']['perturbation_period']  # period at which impulse occurs
 
-        xml_path = 'initial_humanoid.xml'     # XML file path
-        simend = 5                            # duration of simulation
+        xml_path = params['config']['xml_path']
+        simend = params['config']['simend']   # duration of simulation
         tree = ET.parse(xml_path)
         root = tree.getroot()
         # MODIFY THE XML FILE AND INSERT THE MASS AND LENGTH
         # PROPERTIES OF INTEREST 
-        M_total = 80 # kg
-        H_total = 1.78 # meters
+        M_total = params['config']['M_total'] # kilograms
+        H_total = params['config']['H_total'] # meters
         m_feet, m_body, l_COM, l_foot, a, self.K_p = calculate_kp_and_geom \
                                                 (M_total, H_total)
         h_f = H_total/10 # temporary foot height
@@ -183,14 +193,15 @@ class ankleTorqueControl:
                             translation_friction_constant, 
                             rolling_friction_constant) # call utility functoin to set parameters of xml model
 
-        tree.write('modified_model_new.xml')
+        literature_model = params['config']['lit_xml_file']
+
+        tree.write(literature_model)
         ########
 
         #get the full path
-        modified_xml_path = 'modified_model_new.xml'
         script_directory = os.path.dirname(os.path.abspath(__file__))
         xml_path = os.path.join(script_directory, xml_path)
-        model = mj.MjModel.from_xml_path(modified_xml_path)  # MuJoCo XML model
+        model = mj.MjModel.from_xml_path(literature_model)  # MuJoCo XML model
 
         data = mj.MjData(model)                # MuJoCo data
         cam = mj.MjvCamera()                        # Abstract camera
@@ -206,8 +217,8 @@ class ankleTorqueControl:
         mj.mjv_defaultCamera(cam)
         mj.mjv_defaultOption(opt)
         # opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
-        opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
-        opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
+        opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = params['config']['visualize_contact_force']
+        opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = params['config']['visualize_perturbation_force']
         # opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
         # opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = True
         # opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
@@ -217,7 +228,7 @@ class ankleTorqueControl:
         # opt.flags[mj.mjtFrame.mjFRAME_CONTACT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_BODY] = True
         # opt.mjVIS_COM = True
-        model.opt.timestep = 0.001
+        model.opt.timestep = params['config']['simulation_timestep']
 
         # tweak map parameters for visualization
         model.vis.map.force = 0.1 # scaling parameter for force vector's length
@@ -269,7 +280,7 @@ class ankleTorqueControl:
 
         recorded_control_counter = 0
 
-        control_flag = True
+        control_flag = params['config']['controller_flag']
         if control_flag:
             # PASS CONTROLLER METHOD
             # TO MUJOCO THING THAT DOES CONTROL... DONT FULLY
@@ -284,15 +295,15 @@ class ankleTorqueControl:
             # print(recorded_torques)
 
         # start the thread that generates the perturbation impulses
-        impulse_thread_exit_flag = False
+        self.impulse_thread_exit_flag = False
         perturbation_thread = threading.Thread \
             (target=self.generate_large_impulse, 
             daemon=True, 
             args=(perturbation_queue,perturbation_time, perturbation_magnitude, perturbation_period) )
-        # perturbation_thread.start()
+        if params['config']['apply_perturbation']:
+            perturbation_thread.start()
         start_time = time.time()
 
-        sim_exit_flag = False
         while not glfw.window_should_close(window): # glfw.window_should_close() indicates whether or not the user has closed the window
             simstart = data.time
             
@@ -339,8 +350,9 @@ class ankleTorqueControl:
                 body_orientation_data = np.vstack((body_orientation_data, orientation_vector))
             
             if (data.time>=simend):
-                impulse_thread_exit_flag = True
-                # perturbation_thread.join()
+                self.impulse_thread_exit_flag = True
+                if params['config']['apply_perturbation']:
+                    perturbation_thread.join()
                 break;
             
             # get framebuffer viewport
@@ -371,7 +383,8 @@ class ankleTorqueControl:
             glfw.poll_events()
 
         # this writes the list of frames we collected to an mp4 file and makes it a video
-        imageio.mimwrite(video_file, frames, fps=video_fps)
+        if self.mp4_flag:
+            imageio.mimwrite(video_file, frames, fps=video_fps)
         print('terminated')
         glfw.terminate()
 
@@ -381,25 +394,25 @@ class ankleTorqueControl:
 
         ##### PLOTTING CODE ######################
         ##########################################
-
-        # plot_3d_pose_trajectory(body_com_data, body_orientation_data)
-        # if control_flag:
-            # torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
-            # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
-        # plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
-        # # else:
-        # #     plot_columns(recorded_torques, 'Control Torque')
-        # plot_columns(perturbation_data_array, "perturbation versus time")
-        # plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
-        # plot_columns(joint_velocity_data, "Joint Velocity")
-        plot_four_columns(joint_position_data, 
-                        goal_position_data, 
-                        joint_velocity_data, 
-                        control_log_array,
-                        "joint actual pos.",
-                        "joint goal pos.",
-                        "joint vel.",
-                        "control torque")
+        if self.plot_flag:
+            plot_3d_pose_trajectory(body_com_data, body_orientation_data)
+            # if control_flag:
+                # torque_csv_file_path = os.path.join(script_directory, "recorded_torques_test.csv")
+                # np.savetxt(torque_csv_file_path, control_log_array[1:,:], delimiter=",")
+            # plot_columns(control_log_array, '$\\bf{Control\;Torque, \\it{\\tau_{ankle}}}$')
+            # # else:
+            # #     plot_columns(recorded_torques, 'Control Torque')
+            plot_columns(perturbation_data_array, "perturbation versus time")
+            plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
+            plot_columns(joint_velocity_data, "Joint Velocity")
+            plot_four_columns(joint_position_data, 
+                            goal_position_data, 
+                            joint_velocity_data, 
+                            control_log_array,
+                            "joint actual pos.",
+                            "joint goal pos.",
+                            "joint vel.",
+                            "control torque")
 
         ###########################################
         ###########################################

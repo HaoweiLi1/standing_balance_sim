@@ -358,7 +358,7 @@ class muscleSim:
             glfw.poll_events()
 
         # this writes the list of frames we collected to an mp4 file and makes it a video
-        imageio.mimwrite(video_file, frames, fps=video_fps)
+        # imageio.mimwrite(video_file, frames, fps=video_fps)
         
         print('terminated')
         glfw.terminate()

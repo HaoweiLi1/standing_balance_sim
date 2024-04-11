@@ -1,0 +1,24 @@
+config:
+  perturbation_time: 0.5
+  perturbation_magnitude: 400
+  perturbation_period: 2
+  translation_friction_constant: 0.9
+  rolling_friction_constant: 0.9
+  ankle_position_setpoint: 0.0872665
+  ankle_joint_initial_position: 0.0872665
+  simend: 5
+  M_total: 80
+  H_total: 1.78
+  mp4_file_name: 'pose_trajectory.mp4'
+  mp4_fps: 60
+  mp4_flag: False
+  translation_friction_constant: 0.9
+  rolling_friction_constant: 0.9
+  xml_path: 'initial_humanoid.xml'
+  lit_xml_file: 'literature_humanoid.xml'
+  plotter_flag: False
+  simulation_timestep: 0.001
+  visualize_contact_force: True
+  visualize_perturbation_force: True
+  apply_perturbation: False
+  controller_flag: True
