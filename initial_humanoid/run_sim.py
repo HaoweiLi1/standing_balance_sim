@@ -152,6 +152,7 @@ class ankleTorqueControl:
         perturbation_data_array = np.empty((1,2))
         
         params = self.load_params_from_yaml('config.yaml')
+
         self.plot_flag = params['config']['plotter_flag']
         self.mp4_flag = params['config']['mp4_flag']
         
@@ -196,11 +197,7 @@ class ankleTorqueControl:
         literature_model = params['config']['lit_xml_file']
 
         tree.write(literature_model)
-        ########
-
-        #get the full path
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        xml_path = os.path.join(script_directory, xml_path)
+        #######        
         model = mj.MjModel.from_xml_path(literature_model)  # MuJoCo XML model
 
         data = mj.MjData(model)                # MuJoCo data
