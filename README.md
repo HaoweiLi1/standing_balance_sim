@@ -18,14 +18,17 @@ Contact Aware Physics Simulation of Human Standing Balance - University of Michi
 
 **Gravity Compensation:**
 
-https://github.com/celwell20/standing_balance_sim/assets/79417604/45556f90-3a77-4dfd-bf46-ffdc871d4c03
+https://github.com/celwell20/standing_balance_sim/assets/79417604/d9e2c403-6683-41ff-9816-139786d5541b
+
+
 
 
 
 
 **Muscle-Tendon Bang-Bang Controller:**
 
-https://github.com/celwell20/standing_balance_sim/assets/79417604/91280a26-1ead-49bb-a67c-9c388991b003
+https://github.com/celwell20/standing_balance_sim/assets/79417604/dbbbcf62-1338-4276-9f76-8e3d9354ff0e
+
 
 
 
