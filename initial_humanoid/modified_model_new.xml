@@ -1,4 +1,4 @@
-<mujoco model="Leg">
+<mujoco model="initial_humanoid">
   
   <option gravity="0 0 -9.81">
     
@@ -19,61 +19,35 @@
 
   
   <asset>
+  
     <texture type="skybox" builtin="gradient" rgb1=".3 .5 .7" rgb2="0 0 0" width="32" height="512" />
+    
+    
     <texture name="body" type="cube" builtin="flat" mark="cross" width="128" height="128" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01" />
+    
     <material name="body" texture="body" texuniform="true" rgba="0.8 0.6 .4 1" />
+    
+     
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4" />
+    
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2" />
+    
+    <mesh name="foot_mesh" vertex="-0.13528 -0.035 0   -0.13528 0.035 0   0.27056 -0.035 0   0.27056 0.035 0  0.0838736 -0.035 0.178 0.0838736 0.035 0.178" />
   </asset>
 
   
   <default>
-    <motor ctrlrange="-1 1" ctrllimited="true" />
-    <default class="body">
+    <motor ctrlrange="-0.5 0.5" ctrllimited="true" />
+    <default class="poo">
 
       
       
-      <geom type="capsule" mass="10" condim="1" friction="0.7 0.005 0.0001" solimp=".9 .99 .003" solref=".015 1" material="body" group="1" />
+      <geom material="body" type="capsule" condim="1" friction="0.99 0.99 0.99" solimp=".9 .99 .003" solref="10 1" group="1" />
       
       
-      <default class="shin">
-        <geom size="0.045 0.045 1.78" />  
+      <default class="long_link">
+        <geom fromto="0 0 0.1 0 0 0" size="0.025" />
       </default>
-
-
-      
-      <default class="foot">
-        <geom type="capsule" size=".035" friction="0.9 0 0" solimp=".9 .99 .003" solref=".015 1" mass="2" />
-        
-        <default class="foot1">
-          <geom fromto="-.07 0 0 .14 0 0" />
-        </default>
-        
-        <default class="foot2">
-          <geom fromto="-.07 .02 0 .14 .02 0" />
-        </default>
-       </default>
-
-      
-      
-      <default class="knee">
-        <joint type="hinge" pos="0 0 .02" range="-160 160" />
-      </default>
-      
-      <joint type="hinge" damping=".2" stiffness="1" armature=".01" limited="true" solimplimit="0 .99 .01" />
-      <default class="ankle">
-        <joint range="-50 50" />
-        
-        
-        <default class="ankle_y">
-          <joint pos="0 0 .04" axis="0 1 0" stiffness="6" />
-        </default>
-        
-        
-        <default class="ankle_x">
-          <joint pos="0 0 .04" stiffness="3" />
-        </default>
-      </default>  
 
     </default>
   </default>
@@ -81,56 +55,48 @@
     
 	<worldbody>
       
-      <geom name="ground" size="0 0 .05" type="plane" material="grid" condim="3" friction="0.99 0.99 0.99" solimp=".9 .99 .003" solref=".015 1" />
+      <geom name="ground" size="0 0 .05" friction="0.99 0.99 0.99" type="plane" material="grid" condim="3" solimp=".9 .99 .003" solref="0.015 1" />
       
       
-      <light name="spotlight" mode="targetbodycom" target="shin_right" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30" />
-      
-      
-        
-        
-        
-        <body name="shin_right" pos="0 0 2.5">
-          
-          <geom name="shin_geom" class="shin" mass="0" fromto="0 0 1.78 0 0 0" />
-
-          
-          <joint type="hinge" name="joint_hinge" axis="0 1 0" />
-      
-          
-          <joint type="slide" name="joint_slide_x" axis="1 0 0" pos="0.13528 0 0.035" />
-          <joint type="slide" name="joint_slide_z" axis="0 0 1" pos="0.13528 0 0.035" />
+      <light name="spotlight" mode="targetbodycom" target="foot" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30" />
     
-
+        
+        <body name="foot" pos="0 0 0.1">
           
-          <body name="le_foot" pos="-0.01 0 -0.32">
+          <joint name="rotation_dof" type="hinge" axis="0 -1 0" pos="0.0838736 0 0.035" />
+          <joint type="slide" name="joint_slide_x" axis="-1 0 0" pos="0.0838736 0 0.035" />
+          <joint type="slide" name="joint_slide_z" axis="0 0 1" pos="0.0838736 0 0.035" />
+  
+          <geom type="mesh" mesh="foot_mesh" name="foot_geom" friction=".99 .99 .99" solref="0.015 1" solimp=".9 .99 .003" rgba="0.8 0.6 0.4 1" />
+          
+          <body name="long_link_body" pos="0.0838736 0 0.178">
+          
+          
+            <joint type="hinge" name="ankle_hinge" axis="0 -1 0" damping="1" pos="0 0 0" />
+            <geom name="long_link_geom" class="long_link" mass="0" fromto="0 0 1.78 0 0 0" />
+            <geom name="m_body" type="sphere" size="0.05" mass="40.0" pos="0 0 1.0234999999999999" />
             
-            
-            <joint name="ankle_y_right" class="ankle_y" />
-            
-            <geom name="foot1_right" class="foot2" />
           </body>
-
-          
 
         </body>
       
       
 	</worldbody>
 	
+  <contact>
+    
+    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" friction="0.9 0.9 0.99 0.9 0.9" />
+  </contact>
+
     
 	<actuator>
-      
-      
-      <motor joint="ankle_y_right" name="ankle_actuator_y" gear="144" />
-      
+      <motor joint="ankle_hinge" name="ankle_actuator" gear="150" ctrlrange="-0.5 0.5" />
+      <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40" />
 	</actuator>
 
     
 	<sensor>
-      
-      <jointpos joint="ankle_y_right" />
-      
-      
+      <jointpos joint="ankle_hinge" />
 	</sensor>
+
 </mujoco>

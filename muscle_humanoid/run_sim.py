@@ -30,9 +30,7 @@ from xml_utilities import calculate_kp_and_geom, set_geometry_params
 #     'xtick.labelsize': 10,
 #     'ytick.labelsize': 10,
 #     })
-ankle_position_setpoint = 2.5*np.pi/180 # ankle joint angle position setpoint
 mpl.rcParams.update(mpl.rcParamsDefault)
-control_mode = "torque"               # Set the control type to use - presently just proportional torque controller
 # this function is a thread that uses imulse_thread_exit_flag (global variable)
 # not sure if there is a way to move this function to a utility script without 
 # preventing function from accessing impulse_thread_exit_flag
@@ -42,51 +40,49 @@ perturbation_queue = Queue()
 control_log_queue = Queue()
 counter_queue = Queue()
 perturbation_datalogger_queue = Queue()
-K_p = 1                               # predefining proportional gain for controller 
-
-
-
-# this function has to stay in this script per MuJoCo documentation
-def controller(model, data):
-    """
-    Controller function for the leg. The only two parameters 
-    for this function can be mujoco.model and mujoco.data
-    otherwise it doesn't seem to run properly
-    """
-    bb_ctrl = 1
-    error = ankle_position_setpoint - data.sensordata[0]
-    # print(f'error {round(error,5)}')
-    # tendon bang-bang controller
-    if error > 0:
-        data.ctrl[0] = bb_ctrl
-        data.ctrl[1] = -bb_ctrl
-    else:
-        data.ctrl[0] = -bb_ctrl
-        data.ctrl[1] = bb_ctrl
-    # Log the actuator torque and timestep to an array for later use
-    # control_torque_time_array = np.array([data.time, human_torque])
-    # control_log_queue.put(control_torque_time_array)
-
-    x_perturbation=0
-
-    if not perturbation_queue.empty():
-        
-        x_perturbation = perturbation_queue.get()
-        perturbation_datalogger_queue.put(x_perturbation)
-    
-    # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-    data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
-    
-    # Apply joint perturbations in Joint Space
-    # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
-    # data.qfrc_applied[3] = rx_perturbation
-    # data.qfrc_applied[4] = ry_perturbation
 
 class muscleSim:
     def __init__(self, plot_flag):
         print('simulation class object created')    
         self.plot_flag = plot_flag
         self.impulse_thread_exit_flag = True
+        self.ankle_position_setpoint = 0 # [degrees]
+
+    # this function has to stay in this script per MuJoCo documentation
+    def controller(self, model, data):
+        """
+        Controller function for the leg. The only two parameters 
+        for this function can be mujoco.model and mujoco.data
+        otherwise it doesn't seem to run properly
+        """
+        bb_ctrl = 1
+        error = self.ankle_position_setpoint - data.sensordata[0]
+        # print(f'error {round(error,5)}')
+        # tendon bang-bang controller
+        if error > 0:
+            data.ctrl[0] = bb_ctrl
+            data.ctrl[1] = -bb_ctrl
+        else:
+            data.ctrl[0] = -bb_ctrl
+            data.ctrl[1] = bb_ctrl
+        # Log the actuator torque and timestep to an array for later use
+        # control_torque_time_array = np.array([data.time, human_torque])
+        # control_log_queue.put(control_torque_time_array)
+
+        x_perturbation=0
+
+        if not perturbation_queue.empty():
+            
+            x_perturbation = perturbation_queue.get()
+            perturbation_datalogger_queue.put(x_perturbation)
+        
+        # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
+        data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
+        
+        # Apply joint perturbations in Joint Space
+        # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
+        # data.qfrc_applied[3] = rx_perturbation
+        # data.qfrc_applied[4] = ry_perturbation
 
     def generate_large_impulse(self, perturbation_queue, impulse_time, perturbation_magnitude, impulse_period):
             
@@ -136,8 +132,8 @@ class muscleSim:
         xml_path = 'muscle_humanoid.xml'     # XML file path
         simend = 5                            # duration of simulation
         
-        ankle_position_setpoint = 5*np.pi/180 # ankle joint angle position setpoint
-        ankle_joint_initial_position = ankle_position_setpoint # ankle joint initial angle
+        self.ankle_position_setpoint = 5*np.pi/180 # ankle joint angle position setpoint
+        ankle_joint_initial_position = self.ankle_position_setpoint # ankle joint initial angle
 
         translation_friction_constant = 0.9
         rolling_friction_constant = 0.9
@@ -145,8 +141,6 @@ class muscleSim:
         perturbation_time = 0.25              # parameter that sets pulse width of impulse
         perturbation_magnitude = 20          # size of impulse
         perturbation_period = 2               # period at which impulse occurs
-
-        
 
         # Define parameters for creating and storing an MP4 file of the rendered simulation
         video_file = 'muscle_bangbang.mp4'
@@ -199,9 +193,9 @@ class muscleSim:
         mj.mjv_defaultCamera(cam)
         mj.mjv_defaultOption(opt)
         # opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
-        # opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
+        opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = True
         opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = True
-        opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
+        # opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
         opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = True
         # opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
         # opt.flags[mj.mjtLabel.mjLABEL_JOINT] = True
@@ -210,6 +204,7 @@ class muscleSim:
         # opt.flags[mj.mjtFrame.mjFRAME_CONTACT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_BODY] = True
         # opt.mjVIS_COM = True
+        model.opt.timestep = 0.001
 
         # tweak map parameters for visualization
         model.vis.map.force = 0.1 # scaling parameter for force vector's length
@@ -237,7 +232,7 @@ class muscleSim:
 
         # Set camera configuration
         cam.azimuth = 90.0
-        cam.distance = 5.0
+        cam.distance = 3.25
         cam.elevation = -5
         cam.lookat = np.array([0.012768, -0.000000, 1.254336])
 
@@ -267,7 +262,7 @@ class muscleSim:
             # TO MUJOCO THING THAT DOES CONTROL... DONT FULLY
             # UNDERSTAND WHAT IS GOING ON HERE BUT IT DOES SEEM
             # TO WORK.
-            mj.set_mjcb_control(controller)
+            mj.set_mjcb_control(self.controller)
             pass
         # else:
         #     # use prerecorded torque values if this is the case
@@ -281,7 +276,7 @@ class muscleSim:
             (target=self.generate_large_impulse, 
             daemon=True, 
             args=(perturbation_queue,perturbation_time, perturbation_magnitude, perturbation_period) )
-        perturbation_thread.start()
+        # perturbation_thread.start()
         start_time = time.time()
 
         while not glfw.window_should_close(window):
@@ -318,7 +313,7 @@ class muscleSim:
                 # collect joint position and velocity data from simulation for visualization
                 joint_position_data = np.vstack((joint_position_data, np.array([data.time, 180/np.pi*data.qpos[ankle_joint_id]]) ))
                 joint_velocity_data = np.vstack((joint_velocity_data, np.array([data.time, 180/np.pi*data.qvel[ankle_joint_id]]) ))
-                goal_position_data = np.vstack((goal_position_data, np.array([0,180/np.pi*ankle_position_setpoint]) ))
+                goal_position_data = np.vstack((goal_position_data, np.array([0,180/np.pi*self.ankle_position_setpoint]) ))
                 # collect center of mass data for ID associated with human body element of XML model
                 com = data.xipos[human_body_id]
                 # collect 1x9 orientation vector for ID associated with human body element of XML model
@@ -332,7 +327,7 @@ class muscleSim:
             
             if (data.time>=simend):
                 self.impulse_thread_exit_flag = True
-                perturbation_thread.join()
+                # perturbation_thread.join()
                 break;
             
             # get framebuffer viewport
@@ -363,7 +358,7 @@ class muscleSim:
             glfw.poll_events()
 
         # this writes the list of frames we collected to an mp4 file and makes it a video
-        # imageio.mimwrite(video_file, frames, fps=video_fps)
+        imageio.mimwrite(video_file, frames, fps=video_fps)
         
         print('terminated')
         glfw.terminate()

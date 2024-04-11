@@ -31,7 +31,7 @@
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
 
     <!-- create triangle mesh to represent foot -->
-    <mesh name="foot_mesh" vertex="-1 0 0  1 0 0  0 -1 0  0 1 0  0.25 0 0.5"/>
+    <mesh name="foot_mesh" vertex="-1 0 0  -1 0 0  1 0 0  0 -1 0  0 1 0  0.25 0 0.5"/>
   </asset>
 
   <!-- SECTION TO DEFINE GEOMETRIES AND JOINTS -->
@@ -68,7 +68,7 @@
           <joint type="slide" name="joint_slide_x" axis="-1 0 0"/>
           <joint type="slide" name="joint_slide_z" axis="0 0 1"/>
   
-          <geom type="mesh" mesh="foot_mesh" name="foot_geom"/>
+          <geom type="mesh" mesh="foot_mesh" name="foot_geom" solref=".015 1" solimp=".9 .99 .003" rgba="0.8 0.6 .4 1"/>
           
           <site name="front_foot_site" pos="-0.5 0 0.25" size="0.01 0.01 0.01"/>
           <site name="back_foot_site" pos="0.5 0 0.25" size="0.01 0.01 0.01"/>
@@ -78,7 +78,7 @@
             <!-- <inertial pos="0 0 0.5" mass="1"/>   -->
           
           <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
-            <joint type="hinge" name="ankle_hinge" axis="0 -1 0"/>
+            <joint type="hinge" name="ankle_hinge" axis="0 -1 0" damping="1"/>
             <geom name="shin_geom" class="shin"/>
             <geom name="m_body" type="sphere" size="0.05" pos="0 0 0.75"/>
             <site name="front_shin_site" pos="-0.0125 0 0.5" size="0.01 0.01 0.01"/>
@@ -106,10 +106,9 @@
     </spatial>
   </tendon>
 
-
   <contact>
     <!-- <pair geom1="foot_geom" geom2="ground"/> -->
-    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" friction="0.99 0.99 0.99 0.99 0.99"/>
+    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" friction="0.99 0.99 0.99 0.99 0.99" />
   </contact>
 
     <!-- ACTUATORS FOR THE ANKLE JOINTS -->
@@ -117,7 +116,7 @@
       <!-- <motor joint="ankle_hinge" name="shin_actuator" gear="170"/> -->
       <!-- <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/> -->
       <muscle name="front_muscle" tendon="front_tendon" force="750"/>
-      <muscle name="back_muscle" tendon="back_tendon" force="750"/>
+      <muscle name="back_muscle" tendon="back_tendon" force="1000"/>
   </actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->
