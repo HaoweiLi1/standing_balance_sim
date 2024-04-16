@@ -31,7 +31,7 @@
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2" />
 
     
-    <mesh name="foot_mesh" vertex="-0.13528 -0.035 0   -0.13528 0.035 0   0.27056 -0.035 0   0.27056 0.035 0  0.0838736 -0.035 0.178 0.0838736 0.035 0.178" />
+    <mesh name="foot_mesh" vertex="-0.13528 -0.035 0   -0.13528 0.035 0   0.13528 -0.035 0   0.13528 0.035 0  0.0838736 -0.035 0.178 0.0838736 0.035 0.178" />
   </asset>
 
   
@@ -71,7 +71,7 @@
           <geom type="mesh" mesh="foot_mesh" name="foot_geom" solref=".015 1" solimp=".9 .99 .003" rgba="0.8 0.6 .4 1" />
           
           <site name="front_foot_site" pos="-0.09018666666666668 0 0.05" size="0.01 0.01 0.01" />
-          <site name="back_foot_site" pos="0.27056 0 0.05" size="0.01 0.01 0.01" />
+          <site name="back_foot_site" pos="0.13528 0 0.05" size="0.01 0.01 0.01" />
           
           <body name="shin_body" pos="0.0838736 0 0.178">
           

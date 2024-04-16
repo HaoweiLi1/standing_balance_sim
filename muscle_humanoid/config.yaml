@@ -6,7 +6,7 @@ config:
   rolling_friction_constant: 0.9
   ankle_position_setpoint: 0.0872665
   ankle_joint_initial_position: 0.0872665
-  simend: 5
+  simend: 15
   M_total: 80
   H_total: 1.78
   mp4_file_name: 'bangbang_trajectory.mp4'

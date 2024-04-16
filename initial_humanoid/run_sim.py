@@ -118,7 +118,7 @@ class ankleTorqueControl:
             while time.time() < end_time:
                 # delta = time.time() - start_time
                 # time.sleep(0.0000000001)
-                # print(f"impulse duration: {end_time-time.time()}")
+                print(f"impulse duration: {end_time - (end_time-time.time())}")
                 # Put the generated impulse into the result queue
                 perturbation_queue.put(direction_bool*perturbation)
 
@@ -143,8 +143,8 @@ class ankleTorqueControl:
         self.plot_flag = params['config']['plotter_flag']
         self.mp4_flag = params['config']['mp4_flag']
         
-        self.ankle_position_setpoint = params['config']['ankle_position_setpoint']
-        ankle_joint_initial_position = self.ankle_position_setpoint # ankle joint initial angle
+        self.ankle_position_setpoint = params['config']['ankle_position_setpoint_radians']
+        ankle_joint_initial_position = params['config']['ankle_initial_position_radians'] # ankle joint initial angle
         
         # Define parameters for creating and storing an MP4 file of the rendered simulation
         video_file = params['config']['mp4_file_name']
@@ -167,9 +167,8 @@ class ankleTorqueControl:
         # PROPERTIES OF INTEREST 
         M_total = params['config']['M_total'] # kilograms
         H_total = params['config']['H_total'] # meters
-        m_feet, m_body, l_COM, l_foot, a, self.K_p = calculate_kp_and_geom \
+        h_f, m_feet, m_body, l_COM, l_foot, a, self.K_p = calculate_kp_and_geom \
                                                 (M_total, H_total)
-        h_f = H_total/10 # temporary foot height
         set_geometry_params(root, 
                             m_feet, 
                             m_body, 
@@ -203,17 +202,18 @@ class ankleTorqueControl:
         # opt.flags[mj.mjtVisFlag.mjVIS_CONTACTPOINT] = True
         opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = params['config']['visualize_contact_force']
         opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = params['config']['visualize_perturbation_force']
-        # opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
-        # opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = True
-        # opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
+        opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = params['config']['visualize_joints']
+        opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = params['config']['visualize_actuators']
+        opt.flags[mj.mjtVisFlag.mjVIS_COM] = params['config']['visualize_center_of_mass']
         # opt.flags[mj.mjtLabel.mjLABEL_JOINT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
         # opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
         # opt.flags[mj.mjtFrame.mjFRAME_CONTACT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_BODY] = True
         # opt.mjVIS_COM = True
+        # model.opt.gravity=np.array([0, 0, params['config']['gravity']])
         model.opt.timestep = params['config']['simulation_timestep']
-
+ 
         # tweak map parameters for visualization
         model.vis.map.force = 0.1 # scaling parameter for force vector's length
         model.vis.map.torque = 0.1 # scaling parameter for control torque
@@ -227,22 +227,29 @@ class ankleTorqueControl:
         model.vis.scale.actuatorlength = 0.1 # thickness of visualized actuator
         model.vis.scale.jointwidth = 0.025 # diameter of joint arrows
 
-        # tweaking colors of stuff
+        # tweaking colors of stuff, attribute names are pretty intuitive
         model.vis.rgba.contactforce = np.array([0.7, 0., 0., 0.5], dtype=np.float32)
         model.vis.rgba.force = np.array([0., 0.7, 0., 0.5], dtype=np.float32)
         model.vis.rgba.joint = np.array([0.2, 1, 0.1, 0.8])
-        model.vis.rgba.actuatorpositive = np.array([0., 0.9, 0., 0.5])
-        model.vis.rgba.actuatornegative = np.array([0.9, 0., 0., 0.5])
-        model.vis.rgba.com = np.array([1.,0.647,0.,0.5])
+        model.vis.rgba.actuatorpositive = np.array([0., 0.9, 0., 0.5]) ## color when actuator is exerting positive force
+        model.vis.rgba.actuatornegative = np.array([0.9, 0., 0., 0.5]) ## color when actuator is exerting negative force
+        model.vis.rgba.com = np.array([1.,0.647,0.,0.5]) # center of mass color
 
         scene = mj.MjvScene(model, maxgeom=10000)
         context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 
         # Set camera configuration
-        cam.azimuth = 90.
-        cam.distance = 3.0
-        cam.elevation = -5
-        cam.lookat = np.array([0.012768, -0.000000, 1])
+        cam.azimuth = params['config']['camera_azimuth']
+        cam.distance = params['config']['camera_distance']
+        cam.elevation = params['config']['camera_elevation']
+
+        lookat_string_xyz = params['config']['camera_lookat_xyz']
+        # print(lookat_string_xyz)
+        # do some stuff to take a comma separated string and convert it to a tuple
+        res = tuple(map(float, lookat_string_xyz.split(', ')))
+        # print(f'res: {res}')
+        # get the x, y, z camera coords from the res tuple
+        cam.lookat = np.array([res[0], res[1], res[2]])
 
         # INITIAL CONDITIONS FOR JOINT VELOCITIES
         # data.qvel[0]= 0              # hinge joint at top of body
@@ -251,9 +258,9 @@ class ankleTorqueControl:
         # data.qvel[3]= 0.4           # hinge joint at ankle
 
         # INITIAL CONDITIONS FOR JOINT POSITION
-        # data.qpos[0]= 5*np.pi/180 # hinge joint at top of body
-        # data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
-        # data.qpos[2]=-np.pi/6   # slide / prismatic joint at top of body in z direction
+        data.qpos[0]=params['config']['foot_angle_initial_position_radians'] # hinge joint at top of body
+        data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
+        data.qpos[2]=0   # slide / prismatic joint at top of body in z direction
         data.qpos[3]= ankle_joint_initial_position # hinge joint at ankle
 
         # ID number for the ankle joint, used for data collection
@@ -285,16 +292,18 @@ class ankleTorqueControl:
             daemon=True, 
             args=(perturbation_queue,perturbation_time, perturbation_magnitude, perturbation_period) )
         if params['config']['apply_perturbation']:
+            print('perturbation thread started')
             perturbation_thread.start()
         start_time = time.time()
-
+        print(f'simulation duration: {simend} seconds')
         while not glfw.window_should_close(window): # glfw.window_should_close() indicates whether or not the user has closed the window
             simstart = data.time
-            
+            # print(data.time)
             while (data.time - simstart < 1.0/60.0):
                 # print(data.qpos[0])
                 # print(f'time delta: {time.time() - start_time}')
-
+                # print(f'foot angle: {data.qpos[0]}')
+                
                 x_perturbation=0
 
                 if not perturbation_queue.empty():
@@ -344,9 +353,11 @@ class ankleTorqueControl:
                 body_orientation_data = np.vstack((body_orientation_data, orientation_vector))
             
             if (data.time>=simend):
+                
                 self.impulse_thread_exit_flag = True
                 if params['config']['apply_perturbation']:
                     perturbation_thread.join()
+                    print('perturbation thread terminated')
                 break;
             
             # get framebuffer viewport

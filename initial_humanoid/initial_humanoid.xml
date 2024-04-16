@@ -2,7 +2,7 @@
   <!-- SET GRAVITY TO POINT DOWN -->
   <option gravity="0 0 -9.81">
     <!-- FLAG TO ADD NOISE TO SENSORS -->
-    <flag sensornoise="enable"/>
+    <flag sensornoise="disable"/>
   </option>
 
   <!-- VISUAL SETUP STUFF THAT I DON'T FULLY UNDERSTAND YET -->
@@ -42,7 +42,7 @@
 
       <!-- geoms -->
       <!-- ALL DEFAULT GEOMETRIES ARE CAPSULE TYPE -->
-      <geom material="body" type="capsule" condim="1" friction="0.99 0.99 0.99" solimp=".9 .99 .003" solref="10 1" group="1"/>
+      <geom material="body" type="capsule" condim="1" friction="0.99 0.99 0.99" solimp=".9 .99 .003" solref="0.015 1" group="1"/>
       
       <!-- SHIN GEOMETRY -->
       <default class="long_link">
@@ -69,14 +69,14 @@
   
           <geom type="mesh" mesh="foot_mesh" name="foot_geom" friction=".99 .99 .99" solref="0.015 1" solimp=".9 .99 .003" rgba="0.8 0.6 0.4 1"/>
           
-          <body name="long_link_body">
-          
-          <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
-            <joint type="hinge" name="ankle_hinge" axis="0 -1 0" damping="1"/>
-            <geom name="long_link_geom" class="long_link"/>
-            <geom name="m_body" type="sphere" size="0.05"/>
+            <body name="long_link_body">
             
-          </body>
+            <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
+              <joint type="hinge" name="ankle_hinge" axis="0 -1 0" damping="2.5"/>
+              <geom name="long_link_geom" class="long_link"/>
+              <geom name="m_body" type="sphere" size="0.05"/>
+            
+            </body>
 
         </body>
       <!-- </body> -->
@@ -90,8 +90,8 @@
 
     <!-- ACTUATORS FOR THE ANKLE JOINTS -->
 	<actuator>
-      <motor joint="ankle_hinge" name="ankle_actuator" gear="150" ctrlrange="-0.5 0.5"/>
-      <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/>
+      <motor joint="ankle_hinge" name="ankle_actuator" gear="15" ctrlrange="-10 10"/>
+      <!-- <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/> -->
 	</actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->
