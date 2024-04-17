@@ -32,17 +32,18 @@
     <!-- the material references the texture -->
     <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
     
-    <mesh name="foot_mesh" vertex="-1 0 0  1 0 0  0 -1 0  0 1 0  0.25 0 0.5"/>
+    <mesh name="foot_mesh" vertex="-1 0 0  1 0 0  0 -1 0  0 1 0  0 0 1  0 0 -1"/>
+
   </asset>
 
   <!-- SECTION TO DEFINE GEOMETRIES AND JOINTS -->
   <default>
-    <motor ctrlrange="-0.5 0.5" ctrllimited="true"/>
-    <default class="poo">
-
+    
+    <default class="general_geom">
+      <motor ctrlrange="-0.5 0.5" ctrllimited="true"/>
       <!-- geoms -->
       <!-- ALL DEFAULT GEOMETRIES ARE CAPSULE TYPE -->
-      <geom material="body" type="capsule" condim="1" friction="0.99 0.99 0.99" solimp=".9 .99 .003" solref="0.015 1" group="1"/>
+      <geom material="body" type="capsule" condim="1" friction="0.99 0.99 0.99" solimp=".9 .99 .003" group="1"/>
       
       <!-- SHIN GEOMETRY -->
       <default class="long_link">
@@ -55,7 +56,7 @@
     <!-- DEFINE THE LEG, STARTING FROM THE WORLDBODY FRAME? -->
 	<worldbody>
       <!-- DEFINE THE FLOOR IN THE ENVIRONMENT -->
-      <geom name="ground" size="0 0 .05" friction='0.99 0.99 0.99' type="plane" material="grid" condim="3" solimp=".9 .99 .003" solref="0.015 1"/>
+      <geom name="ground" size="0 0 .05" friction='0.99 0.99 0.99' type="plane" material="grid" condim="3" solimp=".9 .99 .003" />
       
       <!-- LIGHT SETTING -->
       <light name="spotlight" mode="targetbodycom" target="foot" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 -6 4" cutoff="30"/>
@@ -67,13 +68,13 @@
           <joint type="slide" name="joint_slide_x" axis="-1 0 0"/>
           <joint type="slide" name="joint_slide_z" axis="0 0 1"/>
   
-          <geom type="mesh" mesh="foot_mesh" name="foot_geom" friction=".99 .99 .99" solref="0.015 1" solimp=".9 .99 .003" rgba="0.8 0.6 0.4 1"/>
+          <geom type="mesh" mesh="foot_mesh" name="foot_geom" friction=".99 .99 .99" solimp=".9 .99 .003" rgba="0.8 0.6 0.4 1"/>
           
             <body name="long_link_body">
             
-            <!-- Create a hinge joint to constrain rotation around the y-axis (normal to the x-z plane) -->
+            <!-- Create a hinge joint to constrain rotation around the y-axis -->
               <joint type="hinge" name="ankle_hinge" axis="0 -1 0" damping="2.5"/>
-              <geom name="long_link_geom" class="long_link"/>
+              <geom name="long_link_geom" class="long_link" solref="0.015 1"/>
               <geom name="m_body" type="sphere" size="0.05"/>
             
             </body>
@@ -82,10 +83,10 @@
       <!-- </body> -->
       <!-- END OF DEFINING THE LEG IN 3D SPACE -->
 	</worldbody>
-	
+	<!-- "0.99 0.99 0.99 0.99 0.99" -->
   <contact>
     <!-- <pair geom1="foot_geom" geom2="ground"/> -->
-    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" friction="0.99 0.99 0.99 0.99 0.99"/>
+    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" solref="0.015 1" friction="0.1 0.1 0.1 0.1 0.1"/>
   </contact>
 
     <!-- ACTUATORS FOR THE ANKLE JOINTS -->

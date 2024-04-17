@@ -56,14 +56,6 @@ class ankleTorqueControl:
         for this function can be mujoco.model and mujoco.data
         otherwise it doesn't seem to run properly
         """
-
-        # model.actuator_gainprm[1, 0] = 1
-        # print(model.actuator_gainprm)
-        # model.actuator_gainprm[0, 0] = 1 
-        # print(str(data.sensordata[0]) + ", " + str(data.sensordata[1]))
-        # print()
-        # print(f'preverr: {prev_error}')
-        # print(f'ankkle pos: {ankle_position_setpoint}')
         
         error = self.ankle_position_setpoint - data.sensordata[0]
         # GRAVITY COMPENSATION #
@@ -213,7 +205,10 @@ class ankleTorqueControl:
         # opt.mjVIS_COM = True
         # model.opt.gravity=np.array([0, 0, params['config']['gravity']])
         model.opt.timestep = params['config']['simulation_timestep']
- 
+
+        # gravity_string = params['config']['camera_lookat_xyz']
+        # grav_tuple = tuple(map(float, gravity_string.split(', ')))
+        model.opt.gravity = np.array([0, 0, params['config']['gravity']])
         # tweak map parameters for visualization
         model.vis.map.force = 0.1 # scaling parameter for force vector's length
         model.vis.map.torque = 0.1 # scaling parameter for control torque
@@ -259,8 +254,8 @@ class ankleTorqueControl:
 
         # INITIAL CONDITIONS FOR JOINT POSITION
         data.qpos[0]=params['config']['foot_angle_initial_position_radians'] # hinge joint at top of body
-        data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
-        data.qpos[2]=0   # slide / prismatic joint at top of body in z direction
+        # data.qpos[1]=0          # slide / prismatic joint at top of body in x direction
+        # data.qpos[2]=0   # slide / prismatic joint at top of body in z direction
         data.qpos[3]= ankle_joint_initial_position # hinge joint at ankle
 
         # ID number for the ankle joint, used for data collection
@@ -316,6 +311,10 @@ class ankleTorqueControl:
 
                 if data.qpos[0] > np.pi/4 or data.qpos[0] < -np.pi/4:
                     simend = data.time 
+                    # if params['config']['apply_perturbation']:
+                    #     print('perturbation thread terminated')
+                    #     perturbation_thread.join()
+                    
                 #print(f'sensor data: {data.sensordata[0]}')
                 # if we aren't using the PD control mode and instead using prerecorded data, then
                 # we should set the control input to the nth value of the recorded torque array

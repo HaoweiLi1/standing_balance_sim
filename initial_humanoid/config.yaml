@@ -1,16 +1,17 @@
 config:
   perturbation_time: 0.5
-  perturbation_magnitude: 400
-  perturbation_period: 2
+  perturbation_magnitude: 200
+  perturbation_period: 3
+  apply_perturbation: True
   translation_friction_constant: 0.9
   rolling_friction_constant: 0.9
   ankle_position_setpoint_radians: 0.0872665
-  ankle_initial_position_radians: 0.15
+  ankle_initial_position_radians: 0.0872665
   foot_angle_initial_position_radians: 0
-  simend: 3
+  simend: 8
   M_total: 80
   H_total: 1.78
-  mp4_file_name: 'no_controller_forward_fall.mp4'
+  mp4_file_name: 'perturbation_balancing.mp4'
   mp4_fps: 60
   mp4_flag: False
   translation_friction_constant: 0.9
@@ -18,16 +19,15 @@ config:
   xml_path: 'initial_humanoid.xml'
   lit_xml_file: 'literature_humanoid.xml'
   plotter_flag: False
-  simulation_timestep: 0.0001
+  simulation_timestep: 0.001     #0.0001
   visualize_contact_force: False
   visualize_perturbation_force: True
-  visualize_joints: False
-  visualize_actuators: True
+  visualize_joints: True
+  visualize_actuators: False
   visualize_center_of_mass: False
-  apply_perturbation: False
   controller_flag: True
   gravity: -9.81
   camera_azimuth: 90
-  camera_distance: 3.0
+  camera_distance: 3.
   camera_elevation: -5
   camera_lookat_xyz: '0.012768, -0.000000, 1'

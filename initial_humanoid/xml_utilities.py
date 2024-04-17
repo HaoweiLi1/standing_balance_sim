@@ -19,16 +19,16 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
     for geom in root.iter('geom'):
         if geom.get('name') == "long_link_geom":
             geom.set('mass', "0")
-            geom.set('fromto', f'0 0 {H_total} 0 0 0')
+            geom.set('fromto', f'0 0 {H_total} 0 0 0') # this from (x,y,z)_1 to (x,y,z)_2 is w.r.t the long_link_body frame
             # geom.set('pos', f'0 0 {H_total-l_COM}')
 
         elif geom.get('name') == "m_body":    
             geom.set('mass', str(m_body))
-            geom.set('pos', f"0 0 {l_COM}")
+            geom.set('pos', f"0 0 {l_COM}") # this x,y,z position is w.r.t the long_link_body frame
             # geom.set('size', 0.05)
         
         elif geom.get('name') == "foot":
-            geom.set('pos', f'0 0 0')
+            geom.set('pos', f'0 0 0') # this x,y,z position is w.r.t the foot_body frame
 
     for body in root.iter('body'):
             if body.get('name') == "foot":
@@ -38,14 +38,14 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
 
             elif body.get('name') == "long_link_body":
                 # size = float(body.get('size'))
-                body.set('pos', f'{l_foot/2-a} 0 {h_f}') # this x,y,z position is w.r.t the global frame
+                body.set('pos', f'{l_foot/2-a} 0 {h_f}') # this x,y,z position is w.r.t the foot reference frame
 
     for joint in root.iter('joint'):
             if joint.get('name') == "ankle_hinge":
                 joint.set("pos", f"0 0 0") # this x,y,z position is w.r.t the long_link_body reference frame
 
             elif joint.get('name') == "rotation_dof":
-                joint.set('pos', f'{l_foot/2-a} 0 0.035') # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
+                joint.set('pos', f'{l_foot/2-a} 0 {h_f}') # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
 
             elif joint.get('name') == "joint_slide_x":
                 joint.set('pos', f"{l_foot/2-a} 0 0.035") # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
@@ -61,5 +61,8 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
         if mesh.get('name') == "foot_mesh":
             mesh.set('vertex', f"{-l_foot/2} -0.035 0   {-l_foot/2} 0.035 0   {l_foot/2} -0.035 0   {l_foot/2} 0.035 0  {l_foot/2-a} -0.035 {h_f} {l_foot/2-a} 0.035 {h_f}")
 
+    # for opt in root.iter('option'):
+    #     if opt.get('name') == "gravity":
+    #         opt.set('')
             # geom.set('mass', str(m_feet))
             # mesh.set('vertex', f"{-l_foot/2} 0 0  {l_foot/2} 0 0  0 -0.035 0  0 0.035 0  {l_foot/2-a} 0 {h_f}")
