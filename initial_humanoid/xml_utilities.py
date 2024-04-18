@@ -59,8 +59,17 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
 
     for mesh in root.iter('mesh'):
         if mesh.get('name') == "foot_mesh":
-            mesh.set('vertex', f"{-l_foot/2} -0.035 0   {-l_foot/2} 0.035 0   {l_foot/2} -0.035 0   {l_foot/2} 0.035 0  {l_foot/2-a} -0.035 {h_f} {l_foot/2-a} 0.035 {h_f}")
+            mesh.set('vertex', f"{-l_foot/2} -0.045 0   {-l_foot/2} 0.045 0   {l_foot/2} -0.045 0   {l_foot/2} 0.045 0  {l_foot/2-a} -0.045 {h_f} {l_foot/2-a} 0.045 {h_f}")
 
+    for site in root.iter('site'):
+        if site.get('name') == "front_foot_site":
+            # site.set('pos', f"{-l_foot/2} 0 0.05")
+            site.set('fromto', f"{-l_foot/2} 0 0.0 {-l_foot/2} 0 0.1")
+            # site.set('fromto', f"0 0 0.0 0 0 0.1")
+
+        elif site.get('name') == "back_foot_site":
+            # site.set('pos', f"{l_foot/2} 0 0.05")
+            site.set('fromto', f"{l_foot/2} 0 0.0 {l_foot/2} 0 0.1")
     # for opt in root.iter('option'):
     #     if opt.get('name') == "gravity":
     #         opt.set('')

@@ -64,17 +64,20 @@
         <!-- BODY FOR FOOT; CAN HAVE MAX 6-DOF -->
         <body name="foot" >
           <!-- Create prismatic joints to constrain motion along the x and z directions -->
-          <joint name="rotation_dof" type="hinge" axis="0 -1 0"/>
+          <joint type="hinge" name="rotation_dof" axis="0 -1 0"/>
           <joint type="slide" name="joint_slide_x" axis="-1 0 0"/>
           <joint type="slide" name="joint_slide_z" axis="0 0 1"/>
+
+          <site name="front_foot_site" type="cylinder" size="0.075" rgba="0.5 0.5 0.5 0"/>
+          <site name="back_foot_site" type="cylinder" size="0.075" rgba="0.5 0.5 0.5 0"/>
   
-          <geom type="mesh" mesh="foot_mesh" name="foot_geom" friction=".99 .99 .99" solimp=".9 .99 .003" rgba="0.8 0.6 0.4 1"/>
+          <geom type="mesh" mesh="foot_mesh" name="foot_geom" friction=".99 .99 .99" rgba="0.8 0.6 0.4 1"/>
           
             <body name="long_link_body">
             
             <!-- Create a hinge joint to constrain rotation around the y-axis -->
               <joint type="hinge" name="ankle_hinge" axis="0 -1 0" damping="2.5"/>
-              <geom name="long_link_geom" class="long_link" solref="0.015 1"/>
+              <geom name="long_link_geom" class="long_link" solref="0.015 1" solimp=".99 .99 .001"/>
               <geom name="m_body" type="sphere" size="0.05"/>
             
             </body>
@@ -83,10 +86,12 @@
       <!-- </body> -->
       <!-- END OF DEFINING THE LEG IN 3D SPACE -->
 	</worldbody>
+  
 	<!-- "0.99 0.99 0.99 0.99 0.99" -->
   <contact>
     <!-- <pair geom1="foot_geom" geom2="ground"/> -->
-    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" solref="0.015 1" friction="0.1 0.1 0.1 0.1 0.1"/>
+    <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" solref="0.015 1" solimp="0.99 .99 .003" friction=".99 .99 .99"/>
+    <pair name="longlink_ground_friction" geom1="long_link_geom" geom2="ground" solref="0.015 1" solimp="0.99 .99 .003" friction=".99 .99 .99"/>
   </contact>
 
     <!-- ACTUATORS FOR THE ANKLE JOINTS -->
@@ -98,6 +103,8 @@
     <!-- SENSORS FOR THE ANKLE JOINTS -->
 	<sensor>
       <jointpos joint='ankle_hinge'/>
+      <touch site='front_foot_site'/>
+      <touch site='back_foot_site'/>
 	</sensor>
 
 </mujoco>
