@@ -31,7 +31,7 @@ To read from the `config.yaml` file please `pip` install the `pyyaml` libary: `p
 
 There are three different Simulations one may execute in this repository.
 
-### Simulation 1: Initial Humanoid
+## Simulation 1: Initial Humanoid
 
 The initial humanoid uses the MuJoCo `<motor>` element to actuate the two-link model
 
