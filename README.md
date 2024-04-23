@@ -1,6 +1,6 @@
 # MuJoCo Human Standing Balance Simulation - Ozay Lab @ University of Michigan
 
-This repository is meant to be used as a tool for simulating the simplified standing balance model seen in Figure I.1. While this model is simpler than the actual dynamics of a human, the two-link model still allows one to characterize the stabilizable state space for human balancing.
+This repository is meant to be used as a tool for simulating the simplified standing balance model seen in Figure I.1. While this model is simpler than the actual dynamics of a human, the two-link model still allows one to characterize the region of state space, $[\theta_1, \dot{\theta}_1]$, that produces stablizable human balancing.
 
 ![mujoco_vs_theory_resize](https://github.com/celwell20/standing_balance_sim/assets/79417604/3b26e5d5-4d15-470c-8215-d78d28e7ac9a) \
 **Figure I.1.** MuJoCo Two-link Standing Balance Model (left) w/ contact forces shown in red; Theoretical Two-link Model (right).
@@ -10,6 +10,7 @@ Table of contents
 <!--ts-->
 
    * [How to download the Human Standing Balance Repository](#Downloading-the-Simulation-Repository)
+   * [How to build the two-link model in MuJoCo](
    * [How to run the Human Standing Balance Simulation](#Running-the-Human-Standing-Balance-Simulation)
      * [Initial Humanoid Simulation](#Initial-Humanoid-Simulation)
    * [Useful Links](#Useful-links)
@@ -24,7 +25,24 @@ Table of contents
 
 To read from the `config.yaml` file please `pip` install the `pyyaml` libary: `python -m pip install pyyaml`
 
-## Running the Human Standing Balance Simulation
+## How to use XML Utility Script - `xml_utilities.py`
+
+Write stuff explaining how XML utility script works
+
+## How to use `config.yaml`
+
+Write stuff about how the `config.yaml` file works
+
+## Python/MATLAB Plotter Utility Scripts - `plotting_utilities.py`/`plotter.mlx`
+
+Write stuff about how to use the Python and MATLAB plotter tools
+
+## How to build the two-link model in MuJoCo
+
+Please refer to this presentation for details on the implementation of the two-link model in MuJoCo XML syntax: \
+https://umich-my.sharepoint.com/:p:/g/personal/ctelwell_umich_edu/EaIz1NFO1XFEkzxwgJTZY6YBmNlhxBVn0IoqdKdbXYUzvA?e=Iq7vxv
+
+## Running the Human Standing Balance Simulation - `run_sim.py`
 
 Within this repository are three simulations:
 1. The first simulation, `initial_humanoid`, is the first revision of the human standing balance model built in MuJoco. It is fully functional for the purposes of representing the theoretical two-link model.
