@@ -35,14 +35,14 @@ To read from the `config.yaml` file please `pip` install the `pyyaml` libary:
 
 
 
-## **Experiments:**
+## Experiments
 
-###**Gravity Compensation:**
+### Gravity Compensation:
 
 https://github.com/celwell20/standing_balance_sim/assets/79417604/d9e2c403-6683-41ff-9816-139786d5541b
 
 
-###**Muscle-Tendon Bang-Bang Controller:**
+### Muscle-Tendon Bang-Bang Controller:
 
 https://github.com/celwell20/standing_balance_sim/assets/79417604/dbbbcf62-1338-4276-9f76-8e3d9354ff0e
 
