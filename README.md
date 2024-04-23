@@ -14,7 +14,7 @@ Table of contents
 
    * [How to download the Human Standing Balance Repository](#Downloading-the-Simulation-Repository)
    * [How to run the Human Standing Balance Simulation](#Running-the-Human-Standing-Balance-Simulation)
-     * [Simulation 1: Initial Humanoid](#Simulation-1:-Initial-Humanoid)
+     * [Simulation 1: Initial Humanoid](##Simulation-1:-Initial-Humanoid)
    * [Useful Links](#Useful-links)
    * [Experiments](#Experiments)
 <!--te-->
