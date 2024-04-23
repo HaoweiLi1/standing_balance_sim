@@ -34,24 +34,25 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
             if body.get('name') == "foot":
                 # poo = body.get('pos')
                 # print(f'pos: {poo}')
-                body.set('pos',  f'0 0 0.0') # this x,y,z position is w.r.t the global frame
+                body.set('pos',  f'0. 0 0') # this x,y,z position is w.r.t the global frame
+                body.set('quat', f'0 0 0 1') # unit quaternion for pi radians rotation about global z-axis
 
             elif body.get('name') == "long_link_body":
                 # size = float(body.get('size'))
-                body.set('pos', f'{l_foot/2-a} 0 {h_f}') # this x,y,z position is w.r.t the foot reference frame
+                body.set('pos', f'{-l_foot/2+a} 0 {h_f}') # this x,y,z position is w.r.t the foot reference frame
 
     for joint in root.iter('joint'):
             if joint.get('name') == "ankle_hinge":
                 joint.set("pos", f"0 0 0") # this x,y,z position is w.r.t the long_link_body reference frame
 
             elif joint.get('name') == "rotation_dof":
-                joint.set('pos', f'{l_foot/2-a} 0 {h_f}') # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
+                joint.set('pos', f'{-l_foot/2+a} 0 {h_f}') # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
 
             elif joint.get('name') == "joint_slide_x":
-                joint.set('pos', f"{l_foot/2-a} 0 0.035") # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
+                joint.set('pos', f"{-l_foot/2+a} 0 0.035") # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
 
             elif joint.get('name') == "joint_slide_z":
-                joint.set('pos', f"{l_foot/2-a} 0 0.035") # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
+                joint.set('pos', f"{-l_foot/2+a} 0 0.035") # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
 
     for pair in root.iter('pair'):
         if pair.get('name') == "foot_ground_friction":
@@ -59,7 +60,7 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
 
     for mesh in root.iter('mesh'):
         if mesh.get('name') == "foot_mesh":
-            mesh.set('vertex', f"{-l_foot/2} -0.045 0   {-l_foot/2} 0.045 0   {l_foot/2} -0.045 0   {l_foot/2} 0.045 0  {l_foot/2-a} -0.045 {h_f} {l_foot/2-a} 0.045 {h_f}")
+            mesh.set('vertex', f"{-l_foot/2} -0.045 0   {-l_foot/2} 0.045 0   {l_foot/2} -0.045 0   {l_foot/2} 0.045 0  {-l_foot/2+a} -0.045 {h_f} {-l_foot/2+a} 0.045 {h_f}")
 
     for site in root.iter('site'):
         if site.get('name') == "front_foot_site":

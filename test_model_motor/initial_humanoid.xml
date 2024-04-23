@@ -64,8 +64,8 @@
         <!-- BODY FOR FOOT; CAN HAVE MAX 6-DOF -->
         <body name="foot" >
           <!-- Create prismatic joints to constrain motion along the x and z directions -->
-          <joint type="hinge" name="rotation_dof" axis="0 -1 0"/>
-          <joint type="slide" name="joint_slide_x" axis="-1 0 0"/>
+          <joint type="hinge" name="rotation_dof" axis="0 1 0"/>
+          <joint type="slide" name="joint_slide_x" axis="1 0 0"/>
           <joint type="slide" name="joint_slide_z" axis="0 0 1"/>
 
           <site name="front_foot_site" type="cylinder" size="0.075" rgba="0.5 0.5 0.5 0"/>
@@ -76,7 +76,7 @@
             <body name="long_link_body">
             
             <!-- Create a hinge joint to constrain rotation around the y-axis -->
-              <joint type="hinge" name="ankle_hinge" axis="0 -1 0" damping="2.5"/>
+              <joint type="hinge" name="ankle_hinge" axis="0 1 0" damping="2.5"/>
               <geom name="long_link_geom" class="long_link" solref="0.015 1" solimp=".99 .99 .001"/>
               <geom name="m_body" type="sphere" size="0.05"/>
             

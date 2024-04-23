@@ -1,15 +1,15 @@
 config:
   perturbation_time: 0.5
-  perturbation_magnitude: 100
+  perturbation_magnitude: 200
   perturbation_period: 3.25
   apply_perturbation: True
   ankle_position_setpoint_radians: 0.0872665
   ankle_initial_position_radians: 0.0872665
   foot_angle_initial_position_radians: 0
-  simend: 10
+  simend: 15
   M_total: 80
   H_total: 1.78
-  mp4_file_name: 'perturbation_stiff.mp4'
+  mp4_file_name: 'pert_with_contact_force_vis.mp4'
   mp4_fps: 60
   mp4_flag: True
   translation_friction_constant: 0.99
@@ -21,7 +21,7 @@ config:
   visualize_contact_force: True
   visualize_perturbation_force: True
   visualize_joints: False
-  visualize_actuators: False
+  visualize_actuators: True
   visualize_center_of_mass: False
   controller_flag: True
   gravity: -9.81

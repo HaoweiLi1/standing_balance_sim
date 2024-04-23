@@ -234,10 +234,10 @@ class ankleTorqueControl:
         opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = params['config']['visualize_joints']
         opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = params['config']['visualize_actuators']
         opt.flags[mj.mjtVisFlag.mjVIS_COM] = params['config']['visualize_center_of_mass']
-        opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True
+        opt.flags[mj.mjtFrame.mjFRAME_GEOM] = False
         # opt.flags[mj.mjtLabel.mjLABEL_JOINT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
-        # opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
+        opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
         # opt.flags[mj.mjtFrame.mjFRAME_CONTACT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_BODY] = True
         # opt.mjVIS_COM = True
@@ -259,6 +259,8 @@ class ankleTorqueControl:
         model.vis.scale.actuatorwidth = 0.1 # diameter of visualized actuator
         model.vis.scale.actuatorlength = 0.1 # thickness of visualized actuator
         model.vis.scale.jointwidth = 0.025 # diameter of joint arrows
+        model.vis.scale.framelength = 0.25
+        model.vis.scale.framewidth = 0.05
 
         # tweaking colors of stuff, attribute names are pretty intuitive
         model.vis.rgba.contactforce = np.array([0.7, 0., 0., 0.5], dtype=np.float32)
