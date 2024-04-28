@@ -50,10 +50,6 @@ class ankleTorqueControl:
         self.mp4_flag = False
         self.K_p = 1
         self.pertcount = 0
-        self.perturbation_queue = 0
-        self.impulse_time = 0
-        self.perturbation_magnitude = 0
-        self.impulse_period = 0
 
     # this function has to stay in this script per MuJoCo documentation
     def controller(self, model, data):

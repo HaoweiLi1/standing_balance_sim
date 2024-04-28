@@ -18,7 +18,7 @@ config:
   lit_xml_file: 'literature_humanoid_muscle.xml'
   plotter_flag: False
   simulation_timestep: 0.001
-  visualize_contact_force: True
+  visualize_contact_force: False
   visualize_perturbation_force: True
-  apply_perturbation: True
+  apply_perturbation: False
   controller_flag: True

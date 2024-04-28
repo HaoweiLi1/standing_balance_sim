@@ -1,0 +1,31 @@
+config:
+  perturbation_time: 0.5
+  perturbation_magnitude: 200
+  perturbation_period: 3.25
+  apply_perturbation: True
+  ankle_position_setpoint_radians: 0.0872665
+  ankle_initial_position_radians: 0.0872665
+  foot_angle_initial_position_radians: 0
+  simend: 15
+  M_total: 80
+  H_total: 1.78
+  mp4_file_name: 'pert_with_contact_force_vis.mp4'
+  mp4_fps: 60
+  mp4_flag: True
+  translation_friction_constant: 0.99
+  rolling_friction_constant: 0.99
+  xml_path: 'initial_humanoid.xml'
+  lit_xml_file: 'literature_humanoid.xml'
+  plotter_flag: False
+  simulation_timestep: 0.0005     #0.0001
+  visualize_contact_force: True
+  visualize_perturbation_force: True
+  visualize_joints: False
+  visualize_actuators: True
+  visualize_center_of_mass: False
+  controller_flag: True
+  gravity: -9.81
+  camera_azimuth: 87.5
+  camera_distance: 3.
+  camera_elevation: -5
+  camera_lookat_xyz: '0.012768, -0.000000, 1'
