@@ -210,7 +210,6 @@ class ankleTorqueControl:
                             rolling_friction_constant) # call utility functoin to set parameters of xml model
 
         literature_model = params['config']['lit_xml_file']
-
         tree.write(literature_model)
         #######        
         model = mj.MjModel.from_xml_path(literature_model)  # MuJoCo XML model

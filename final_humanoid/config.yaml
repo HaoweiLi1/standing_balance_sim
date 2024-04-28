@@ -11,7 +11,7 @@ config:
   H_total: 1.78
   mp4_file_name: 'pert_with_contact_force_vis.mp4'
   mp4_fps: 60
-  mp4_flag: True
+  mp4_flag: False
   translation_friction_constant: 0.99
   rolling_friction_constant: 0.99
   xml_path: 'initial_humanoid.xml'
