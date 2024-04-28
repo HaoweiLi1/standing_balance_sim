@@ -10,9 +10,16 @@ Table of contents
 <!--ts-->
 
    * [How to download the Human Standing Balance Repository](#Downloading-the-Simulation-Repository)
-   * [How to build the two-link model in MuJoCo](
+   * [Things to `pip install`](#Things-to-`pip-install`)
+   * [How to use `xml_utilities`](How-to-use-XML-Utility-Script-`xml_utilities`)
+   * [How to use `config.yaml`](#How-to-use-`config.yaml`)
+   * [Python/MATLAB Plotter Scripts](#Python/MATLAB-Plotter-Scripts)
+   * [How to build the two-link model in MuJoCo](#How-to-build-the-two-link-model-in-MuJoCo)
    * [How to run the Human Standing Balance Simulation](#Running-the-Human-Standing-Balance-Simulation)
      * [Initial Humanoid Simulation](#Initial-Humanoid-Simulation)
+     * [Test Humanoid Simulation](#Test-Humanoid-Simulation)
+     * [Final Humanoid Simulation](#Final-Humanoid-Simulation)
+     * [Muscle-Tendon Humanoid Simulation](#Muscle-Tendon-Humanoid-Simulation)
    * [Useful Links](#Useful-links)
    * [Experiments](#Experiments)
 <!--te-->
@@ -23,17 +30,23 @@ Table of contents
 2. In the directory, run the command `git clone https://github.com/celwell20/standing_balance_sim.git`
 3. The Human Standing Balance Simulation should now be copied into the present terminal directory
 
+## Things to `pip install`
+
 To read from the `config.yaml` file please `pip` install the `pyyaml` libary: `python -m pip install pyyaml`
 
 ## How to use XML Utility Script - `xml_utilities.py`
 
-Write stuff explaining how XML utility script works
+The function of `xml_utilities.py` is to calculated the literature estimates of various parameters seen in Figure I.1's theoretical model, and subsequently apply them to the XML model we are interested in simulating with MuJoCo. 
+
+We provide the *total mass*, $M_{total}$, and the *total height*, $H_{total}$, as arguments to the method `xml_utilities.calculate_kp_and_geom()` which returns all the desired human geometry and mass estimates, in addition to a *gravity compensation proprortional gain*, $K_P$, which is used as the proportional gain in the ankle motor's linear gravity compensation controller.
+
+To apply these literature estimates to our XML model of interest, I used the `ElementTree` library (imported via `import xml.etree.ElementTree as ET`). The target XML's file path is used as the argument to parse it's XML tree: `ET.parse(xml_path)`. **You should configure the target XML path in the `config.yaml` file specific to your simulation**.
 
 ## How to use `config.yaml`
 
 Write stuff about how the `config.yaml` file works
 
-## Python/MATLAB Plotter Utility Scripts - `plotting_utilities.py`/`plotter.mlx`
+## Python/MATLAB Plotter Scripts
 
 Write stuff about how to use the Python and MATLAB plotter tools
 
@@ -57,14 +70,18 @@ Within this repository are three simulations:
 
 The initial humanoid uses the MuJoCo `<motor>` element to actuate the two-link model
 
-### Simulation 2: Test Humanoid
+### Test Humanoid Simulation
 
-### Simulation 3: Muscle-Tendon Humanoid
+### Final Humanoid Simulation
+
+### Muscle-Tendon Humanoid Simulation
+
+
+
+## Useful links
 
 [MuJoCo Github Repo](https://github.com/google-deepmind/mujoco?tab=readme-ov-file)
 **[MuJoCo Python Bindings](https://mujoco.readthedocs.io/en/latest/python.html)**
-
-## Useful links
 
 1. [XML reference](https://mujoco.readthedocs.io/en/stable/XMLreference.html#body-geom) - useful for understanding how to create MJCF XML Mujoco models.
 2. [MuJoCo Types API Reference](https://mujoco.readthedocs.io/en/stable/APIreference/APItypes.html#mjtsensor) - API reference for parameters related to MuJoCo model, data, visualization, and other simulation values.
