@@ -11,8 +11,8 @@ Table of contents
 
    * [How to download the Human Standing Balance Repository](#Downloading-the-Simulation-Repository)
    * [Things to `pip install`](#Things-to-`pip-install`)
-   * [How to use `xml_utilities`](How-to-use-XML-Utility-Script-`xml_utilities`)
-   * [How to use `config.yaml`](#How-to-use-`config.yaml`)
+   * [How to use `xml utilities`](How-to-use-XML-Utility-Script)
+   * [How to use the Configuration file](#How-to-use-the-Configuration-file)
    * [Python/MATLAB Plotter Scripts](#Python/MATLAB-Plotter-Scripts)
    * [How to build the two-link model in MuJoCo](#How-to-build-the-two-link-model-in-MuJoCo)
    * [How to run the Human Standing Balance Simulation](#Running-the-Human-Standing-Balance-Simulation)
@@ -34,7 +34,7 @@ Table of contents
 
 To read from the `config.yaml` file please `pip` install the `pyyaml` libary: `python -m pip install pyyaml`
 
-## How to use XML Utility Script - `xml_utilities.py`
+## How to use XML Utility Script
 
 The function of `xml_utilities.py` is to calculated the literature estimates of various parameters seen in Figure I.1's theoretical model, and subsequently apply them to the XML model we are interested in simulating with MuJoCo. 
 
@@ -42,7 +42,7 @@ We provide the *total mass*, $M_{total}$, and the *total height*, $H_{total}$, a
 
 To apply these literature estimates to our XML model of interest, I used the `ElementTree` library (imported via `import xml.etree.ElementTree as ET`). The target XML's file path is used as the argument to parse it's XML tree: `ET.parse(xml_path)`. **You should configure the target XML path in the `config.yaml` file specific to your simulation**.
 
-## How to use `config.yaml`
+## How to use the Configuration file
 
 Write stuff about how the `config.yaml` file works
 
@@ -55,7 +55,7 @@ Write stuff about how to use the Python and MATLAB plotter tools
 Please refer to this presentation for details on the implementation of the two-link model in MuJoCo XML syntax: \
 https://umich-my.sharepoint.com/:p:/g/personal/ctelwell_umich_edu/EaIz1NFO1XFEkzxwgJTZY6YBmNlhxBVn0IoqdKdbXYUzvA?e=Iq7vxv
 
-## Running the Human Standing Balance Simulation - `run_sim.py`
+## Running the Human Standing Balance Simulation
 
 Within this repository are three simulations:
 1. The first simulation, `initial_humanoid`, is the first revision of the human standing balance model built in MuJoco. It is fully functional for the purposes of representing the theoretical two-link model.
@@ -64,11 +64,15 @@ Within this repository are three simulations:
 ![inital_versus_final_link_frames](https://github.com/celwell20/standing_balance_sim/assets/79417604/699ff693-4db3-4bdb-8308-65ea13b33858)
 **Figure R.1.** Reference Frame Orientations for World Frame, Initial humanoid link frames, and Final humanoid link frames.
 
-3. The third simulation, `muscle_humanoid`, is an exploration of creating a high-fidelity two-link humanoid via the MuJoCo muscle and tendon functionalities. This model has different foot dimensions than that of `initial_humanoid` or `final_humanoid`; in particular the foot is symmetrical. This change was implemented to make the moments exerted by the front and back muscles equivalent
+The `final_humanoid` simulation/directory is intended to be a location for completed MuJoCo models/simulations.
+
+3. The third simulation, `test_model_motor`, is meant for testing and simulation development; you can think of it as a safe place to modify the XML model/MuJoCo simulation you're working on -- if things break, it doesn't matter, since there is a copy in the `final_humanoid` directory (assuming you're diligent about updating both directories). It has the same reference frame configuration as `final_humanoid` and as of 28th April, 2024 they are identical.
+
+4. The fourth simulation, `muscle_humanoid`, is an exploration of creating a high-fidelity two-link humanoid via the MuJoCo muscle and tendon functionalities. This model has different foot dimensions than that of `initial_humanoid` or `final_humanoid`; in particular the foot is symmetrical. This change was implemented to make the moments exerted by the front and back muscles equivalent and ease the tuning process of the bang-bang controller that provides control inputs to the muscles.
 
 ### Initial Humanoid Simulation
 
-The initial humanoid uses the MuJoCo `<motor>` element to actuate the two-link model
+The initial humanoid uses the MuJoCo `<motor>` element to actuate the two-link model; this model is not very up-to-date at this point. I left it in the repository because I didn't see a point in deleting it, but I highly recommend referencing `final_humanoid`, `test_humanoid`, and `muscle_humanoid` as they are much more recent. 
 
 ### Test Humanoid Simulation
 
