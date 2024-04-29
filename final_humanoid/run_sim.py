@@ -278,6 +278,7 @@ class ankleTorqueControl:
         cam.elevation = params['config']['camera_elevation']
 
         lookat_string_xyz = params['config']['camera_lookat_xyz']
+        print(f'lookat string: {lookat_string_xyz}')
         # print(lookat_string_xyz)
         # do some stuff to take a comma separated string and convert it to a tuple
         res = tuple(map(float, lookat_string_xyz.split(', ')))

@@ -7,10 +7,11 @@ def calculate_kp_and_geom(weight, height):
     m_body = M_total - m_feet
     l_COM = 0.575*H_total
     l_foot = 0.152*H_total
+    h_f = 0.039*H_total
     a = 0.19*l_foot
     K_p = m_body * 9.81 * l_COM
 
-    return m_feet, m_body, l_COM, l_foot, a, K_p
+    return m_feet, m_body, l_COM, l_foot, a, K_p, h_f
 
 
 def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, trans_fric, roll_fric):
@@ -38,18 +39,20 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
     # modify the mesh which composes the foot geom in this model
     for mesh in root.iter('mesh'):
         if mesh.get('name') == "foot_mesh":
-            mesh.set('vertex', f"{-l_foot/2} -0.035 0   {-l_foot/2} 0.035 0   {l_foot/2} -0.035 0   {l_foot/2} 0.035 0  {l_foot/2-a} -0.035 {h_f} {l_foot/2-a} 0.035 {h_f}")
+            # mesh.set('vertex', f"{-l_foot/2} -0.035 0   {-l_foot/2} 0.035 0   {l_foot/2} -0.035 0   {l_foot/2} 0.035 0  {l_foot/2-a} -0.035 {h_f} {l_foot/2-a} 0.035 {h_f}")
+            mesh.set('vertex', f"{-l_foot/2} -0.035 0   {-l_foot/2} 0.035 0   {l_foot/2} -0.035 0   {l_foot/2} 0.035 0  {0} -0.035 {h_f} {0} 0.035 {h_f}")
 
     # modify properties of various bodies in the model
     for body in root.iter('body'):
             if body.get('name') == "foot":
                 # poo = body.get('pos')
                 # print(f'pos: {poo}')
-                body.set('pos',  f'0 0 0.1')
+                body.set('pos',  f'0 0 0.00')
 
             elif body.get('name') == "shin_body":
                 # size = float(body.get('size'))
-                body.set('pos', f'{l_foot/2-a} 0 {h_f}')
+                # body.set('pos', f'{l_foot/2-a} 0 {h_f}')
+                body.set('pos', f'{0} 0 {h_f}')
                 # body.set('inertial', f"{l_foot/2-a} 0 {h_f+l_COM}")
 
     # modify properties of various joints in the model
@@ -76,16 +79,16 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
     # attach the tendons in our model to the geoms in our model
     for site in root.iter('site'):
         if site.get('name') == "front_foot_site":
-            site.set('pos', f"{-l_foot/3} 0 0.05")
+            site.set('pos', f"{-l_foot/3} 0 0.025")
         
         elif site.get('name') == "front_shin_site":
-            site.set('pos', f"-0.0125 0 {3*h_f}")
+            site.set('pos', f"-0.01 0 {5*h_f}")
 
         elif site.get('name') == "back_foot_site":
-            site.set('pos', f"{l_foot/2} 0 0.05")
+            site.set('pos', f"{l_foot/3} 0 0.025")
 
         elif site.get('name') == "back_shin_site":
-            site.set('pos', f"0.0125 0 {3*h_f}")
+            site.set('pos', f"0.01 0 {5*h_f}")
 
     # modify properties of the sites that the tendons are connected to
     # we must iterate thru the "spatial" tendons because this is the

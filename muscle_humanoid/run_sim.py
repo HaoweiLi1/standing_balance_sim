@@ -158,9 +158,9 @@ class muscleSim:
         # PROPERTIES OF INTEREST 
         M_total = params['config']['M_total'] # kilograms
         H_total = params['config']['H_total'] # meters
-        m_feet, m_body, l_COM, l_foot, a, K_p = calculate_kp_and_geom \
+        m_feet, m_body, l_COM, l_foot, a, K_p, h_f = calculate_kp_and_geom \
                                                 (M_total, H_total)
-        h_f = H_total/10 # temporary foot height
+        
         set_geometry_params(root, 
                             m_feet, 
                             m_body, 
@@ -196,7 +196,7 @@ class muscleSim:
         opt.flags[mj.mjtVisFlag.mjVIS_CONTACTFORCE] = params['config']['visualize_contact_force']
         opt.flags[mj.mjtVisFlag.mjVIS_PERTFORCE] = params['config']['visualize_perturbation_force']
         # opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = True
-        opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = True
+        opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = params['config']['visualize_actuators']
         # opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
         # opt.flags[mj.mjtLabel.mjLABEL_JOINT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
@@ -231,10 +231,19 @@ class muscleSim:
         context = mj.MjrContext(model, mj.mjtFontScale.mjFONTSCALE_150.value)
 
         # Set camera configuration
-        cam.azimuth = 90.0
-        cam.distance = 3.25
-        cam.elevation = -5
-        cam.lookat = np.array([0.012768, -0.000000, 1.254336])
+        # Set camera configuration
+        cam.azimuth = params['config']['camera_azimuth']
+        cam.distance = params['config']['camera_distance']
+        cam.elevation = params['config']['camera_elevation']
+
+        lookat_string_xyz = params['config']['camera_lookat_xyz']
+        print(f'lookat string: {lookat_string_xyz}')
+        # print(lookat_string_xyz)
+        # do some stuff to take a comma separated string and convert it to a tuple
+        res = tuple(map(float, lookat_string_xyz.split(', ')))
+        # print(f'res: {res}')
+        # get the x, y, z camera coords from the res tuple
+        cam.lookat = np.array([res[0], res[1], res[2]])
 
         # INITIAL CONDITIONS FOR JOINT VELOCITIES
         # data.qvel[0]= 0              # hinge joint at top of body
@@ -298,8 +307,8 @@ class muscleSim:
                 # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
                 data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
 
-                if data.qpos[0] > np.pi/4 or data.qpos[0] < -np.pi/4:
-                    simend = data.time
+                # if data.qpos[0] > np.pi/4 or data.qpos[0] < -np.pi/4:
+                #     simend = data.time
                 #print(f'sensor data: {data.sensordata[0]}')
                 # if we aren't using the PD control mode and instead using prerecorded data, then
                 # we should set the control input to the nth value of the recorded torque array

@@ -19,6 +19,11 @@ config:
   plotter_flag: False
   simulation_timestep: 0.001
   visualize_contact_force: False
+  visualize_actuators: True
   visualize_perturbation_force: True
   apply_perturbation: False
   controller_flag: True
+  camera_azimuth: 87.5
+  camera_distance: 1.5
+  camera_elevation: -5.
+  camera_lookat_xyz: '0.012768, -0.000000, .1'
