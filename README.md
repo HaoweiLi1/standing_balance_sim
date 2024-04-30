@@ -32,23 +32,58 @@ Table of contents
 
 ## Libraries to Install
 
-To read from the `config.yaml` file please `pip` install the `pyyaml` libary: `python -m pip install pyyaml`
+Please `pip install` the following libraries if you do not already have them: <br>
+1. `pyyaml` library: `python -m pip install pyyaml` <br>
+2. `numpy`<br>
+3. `threading` <br>
+4. `xml` support library: `pip install xml-python` <br>
+5. `imageio` <br>
+6. `matplotlib` <br>
 
 ## How to use XML Utility Script
 
-The function of `xml_utilities.py` is to calculated the literature estimates of various parameters seen in Figure I.1's theoretical model, and subsequently apply them to the XML model we are interested in simulating with MuJoCo. 
+The function of `xml_utilities.py` is to calculate the literature estimates of various parameters seen in Figure I.1's theoretical model, and subsequently apply them to the XML model we are interested in simulating with MuJoCo. 
 
 We provide the *total mass*, $M_{total}$, and the *total height*, $H_{total}$, as arguments to the method `xml_utilities.calculate_kp_and_geom()` which returns all the desired human geometry and mass estimates, in addition to a *gravity compensation proprortional gain*, $K_P$, which is used as the proportional gain in the ankle motor's linear gravity compensation controller.
 
-To apply these literature estimates to our XML model of interest, I used the `ElementTree` library (imported via `import xml.etree.ElementTree as ET`). The target XML's file path is used as the argument to parse it's XML tree: `ET.parse(xml_path)`. **You should configure the target XML path in the `config.yaml` file specific to your simulation**.
+To apply these literature estimates to our XML model of interest, I used the `ElementTree` library (imported via `import xml.etree.ElementTree as ET`). This library allows us to iterate through different elements in the XML file, which makes it quite convenient when picking and choosing what values we want to edit without entering the XML file structure. The target XML's file path is used as the argument to parse it's XML tree: `ET.parse(xml_path)`. **You should configure the target XML path in the `config.yaml` file specific to your simulation**. We then extract the XML tree `root` (`root=tree.getroot()`) which we pass as the first argument into the `xml_utilities.set_geometry_params()` (in addition to the literature estimate dimensions). `set_geometry_params()` edits the XML model we are interested in modifying; once we have edited the XML we save it to a new XML file (to not override our original XML being modified). This modified XML file is then parsed by MuJoCo to get the `model` and `data` structs to be used in the simulation.
+
+`config.yaml` original XML file parameter: `xml_path` <br>
+`config.yaml` modified (typically modified to abide by literature estimate dimensions) XML file parameter: `lit_xml_file`
 
 ## How to use the Configuration file
 
-Write stuff about how the `config.yaml` file works
+The `config.yaml` file is where you may toggle on/off a number of visualization/simulation parameters, in addition to modifying numerical values that are used in the simulation. See Figure C.1 for a list of the available `config.yaml` parameters.
+
+![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/60f51bd0-602f-488d-a266-4073f2df3484) <br>
+**Figure C.1.** Configurable parameters in `config.yaml` (As of 30th April 2024).
 
 ## Python and MATLAB Plotter Scripts
 
-Write stuff about how to use the Python and MATLAB plotter tools
+I have developed plotter tools in both Python and MATLAB. While the Python plotters are quicker to use, I would recommend using the MATLAB plotters as they are more updated and are used to produce the plots seen in the [Experiments](#Experiments) section.
+
+Available Python Plotter Methods:
+1. `plot_3d_pose_trajectory` - plots the pose trajectory of the humanoid's center of mass as the simulation evovles
+2. `plot_columns` - plots the first two columns of an arbitrary `numpy` array versus one another
+3. `plot_two_columns` - plots the first two columns of two arbitrary `numpy` arrays. Both array data series's are displayed on the same plot
+4. `plot_four_columns` - plots the first two columns of four arbitrary `numpy` arrays. All array data series are shown on the same plot.
+
+I have configured the `initial_humanoid`, `test_humanoid`, `final_humanoid`, and `muscle_humanoid` to automatically calculate the data of interest and save it to `numpy` arrays for processing in the Python plotters. **To turn the plotting visualization on/off, toggle the `plotter_flag` parameter in `config.yaml`.**
+
+Available MATLAB Plotter Methods: <br>
+1. `plotter.mlx` - creates a figure with four data series: <br>
+   a. Joint position, $\theta$, versus time <br>
+   b. Joint velocity, $\dot{\theta}$ versus time <br>
+   c. Front and back contact forces, $F_{c,front}$ & $F_{c,back}$, versus time <br>
+   d. Perturbation force, $f_{perturbation}$ <br>
+   `plotter.mlx` also produces a plot of only the $f_{perturbation}$ data series. <br>
+3. `plotter_3.mlx` - creates a figure with three data series: <br>
+   a. Joint position, $\theta$, versus time <br>
+   b. Joint velocity, $\dot{\theta}$ versus time <br>
+   c. Front and back contact forces, $F_{c,front}$ & $F_{c,back}$, versus time <br>
+   `plotter_3.mlx` also produces a plot of only the $f_{perturbation}$ data series. <br>
+
+I have configured the `final_humanoid`, `test_humanoid`, and `muscle_humanoid` simulations to automatically calculate and save the data series' of interest to `.csv` files. So, you should be able to run either of those simulations, and then run the MATLAB plotters shortly after without modifying anything.
 
 ## How to build the two-link model in MuJoCo
 
@@ -129,5 +164,6 @@ https://github.com/celwell20/standing_balance_sim/assets/79417604/cdc0fe23-88d2-
 
 https://github.com/celwell20/standing_balance_sim/assets/79417604/8e0e0bf8-1a1c-4283-a04a-ed9c36c0b648
 
-
+![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/7e2712c5-fee2-4fc9-9733-dd7a9185bb0c)
+**Figure E.4.** Joint Angle, Joint Velocity, and Front/Back Contact Forces during `muscle_humanoid` gravity compensation Simulation.
 
