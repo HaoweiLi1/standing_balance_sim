@@ -97,7 +97,7 @@
     <!-- ACTUATORS FOR THE ANKLE JOINTS -->
 	<actuator>
       <motor joint="ankle_hinge" name="ankle_actuator" gear="15" ctrlrange="-10 10"/>
-      <!-- <motor joint="ankle_hinge" name="exo_ankle_actuator_y" gear="40"/> -->
+      <!-- <motor joint="ankle_hinge" name="exo_ankle_actuator" gear="40"/> -->
 	</actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->

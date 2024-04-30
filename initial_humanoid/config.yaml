@@ -16,7 +16,7 @@ config:
   rolling_friction_constant: 0.99
   xml_path: 'initial_humanoid.xml'
   lit_xml_file: 'literature_humanoid.xml'
-  plotter_flag: False
+  plotter_flag: True
   simulation_timestep: 0.0005     #0.0001
   visualize_contact_force: True
   visualize_perturbation_force: True

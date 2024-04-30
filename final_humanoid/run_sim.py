@@ -233,7 +233,7 @@ class ankleTorqueControl:
         opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = params['config']['visualize_joints']
         opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = params['config']['visualize_actuators']
         opt.flags[mj.mjtVisFlag.mjVIS_COM] = params['config']['visualize_center_of_mass']
-        opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
+        # opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
         # opt.flags[mj.mjtLabel.mjLABEL_JOINT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
         # opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
@@ -329,8 +329,12 @@ class ankleTorqueControl:
         if params['config']['apply_perturbation']:
             print('perturbation thread started')
             perturbation_thread.start()
+
+
         start_time = time.time()
         print(f'simulation duration: {simend} seconds')
+
+
         while not glfw.window_should_close(window): # glfw.window_should_close() indicates whether or not the user has closed the window
             simstart = data.time
             # print(data.time)
@@ -355,13 +359,13 @@ class ankleTorqueControl:
                 # print('running')
                 if not perturbation_queue.empty():
                     # if not perturbation_queue.empty():
-            # print(f"perturbation: {perturbation_queue.get()}, time: {time.time()-start}")
+                    # print(f"perturbation: {perturbation_queue.get()}, time: {time.time()-start}")
             
                     x_perturbation = perturbation_queue.get()
                     # print(x_perturbation)
-            # perturbation_datalogger_queue.put(x_perturbation)
+                    # perturbation_datalogger_queue.put(x_perturbation)
         
-        # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
+                    # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
                     data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
                     perturbation_data_array = np.vstack((perturbation_data_array, np.array([data.time, x_perturbation]) ))
                 else:
