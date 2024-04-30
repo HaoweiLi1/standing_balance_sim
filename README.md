@@ -21,6 +21,10 @@ Table of contents
      * [Test Humanoid Simulation](#Test-Humanoid-Simulation)
      * [Final Humanoid Simulation](#Final-Humanoid-Simulation)
      * [Muscle-Tendon Humanoid Simulation](#Muscle-Tendon-Humanoid-Simulation)
+   * [MuJoCo Simulation Class Architecture](#MuJoCo-Simulation-Class-Architecture)
+     * [Controller Method](#Controller-Method)
+     * [Perturbation Method](#Perturbation-Method)
+     * [Run Method](#Run-Method)   
    * [Experiments](#Experiments)
 <!--te-->
 
@@ -152,6 +156,15 @@ To run the `muscle_humanoid` simulation:
 1. Open a terminal of your choice and enter the `standing_balance_sim` directory that is installed locally on your computer. <br>
 2. Enter the proper simulation directory: `cd muscle_humanoid` <br>
 3. Run the command `python run_sim.py` in the terminal to run the simulation
+
+## MuJoCo Simulation Class Architecture
+This section highlights how the various `humanoid` simulation classes are structured. There are three main methods, which are `controller`, `generate_large_impulse`, and `run`. Hopefully these are intuitively named, but for clarity, the `controller` class runs the control law during the simulation update, and assigns control inputs to the `<actuator>` elements in our model. The `generate_large_impulse` method generates quasi-impulse perturbations of varying magnitude, pulse width, and frequency; this method is called in a separate thread from the simulation thread. A future work for this tool would be to implement the perturbation in the actual simulation update, rather than in a separate thread. The two threads running simultaneously does not cause problems, but leads to perturbations that do not quite align with the user specified parameters in `config.yaml` (namely the perturbation pulse width). The `run` method loads the XML model, and runs the simulation.
+
+### Controller Method
+
+### Perturbation Method
+
+### Run Method
 
 ## Experiments
 
