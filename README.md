@@ -57,6 +57,7 @@ Please `pip install` the following libraries if you do not already have them: <b
 7. [MuJoCo Computation Reference](https://mujoco.readthedocs.io/en/latest/computation/index.html) - describes the math use to evaluate a MuJoCo simulation.
 8. [MuJoCo Simulation Reference](https://mujoco.readthedocs.io/en/latest/programming/simulation.html#forward-dynamics)
 9. [MuJoCo Visualization Reference](https://mujoco.readthedocs.io/en/latest/programming/visualization.html#rendering)
+10. [MuJoCo Contact Constraint Solver Parameters](https://mujoco.readthedocs.io/en/latest/modeling.html#solver-parameters)
 
 ## How to use XML Utility Script
 
