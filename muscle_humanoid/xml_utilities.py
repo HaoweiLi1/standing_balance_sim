@@ -90,6 +90,15 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
         elif site.get('name') == "back_shin_site":
             site.set('pos', f"0.01 0 {5*h_f}")
 
+        elif site.get('name') == "front_foot_force_sensor_site":
+            # site.set('pos', f"{-l_foot/2} 0 0.05")
+            site.set('fromto', f"{-l_foot/2} 0 0.0 {-l_foot/2} 0 0.1")
+            # site.set('fromto', f"0 0 0.0 0 0 0.1")
+
+        elif site.get('name') == "back_foot_force_sensor_site":
+            # site.set('pos', f"{l_foot/2} 0 0.05")
+            site.set('fromto', f"{l_foot/2} 0 0.0 {l_foot/2} 0 0.1")
+
     # modify properties of the sites that the tendons are connected to
     # we must iterate thru the "spatial" tendons because this is the
     # type of tendon I used in the XML file

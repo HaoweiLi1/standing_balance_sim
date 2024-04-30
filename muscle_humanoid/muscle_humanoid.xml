@@ -68,8 +68,11 @@
           <joint type="slide" name="joint_slide_x" axis="-1 0 0"/>
           <joint type="slide" name="joint_slide_z" axis="0 0 1"/>
   
-          <geom type="mesh" mesh="foot_mesh" name="foot_geom" solref=".015 1" solimp=".9 .99 .003" rgba="0.8 0.6 .4 1"/>
+          <geom type="mesh" mesh="foot_mesh" name="foot_geom" solref=".015 1" solimp=".9 .99 .003" rgba="0.8 0.6 .4 0"/>
           
+          <site name="front_foot_force_sensor_site" type="cylinder" size="0.075" rgba="0.5 0.5 0.5 1"/>
+          <site name="back_foot_force_sensor_site" type="cylinder" size="0.075" rgba="0.5 0.5 0.5 1"/>
+
           <site name="front_foot_site" pos="-0.5 0 0.25" size="0.01 0.01 0.01"/>
           <site name="back_foot_site" pos="0.5 0 0.25" size="0.01 0.01 0.01"/>
           
@@ -121,6 +124,8 @@
     <!-- SENSORS FOR THE ANKLE JOINTS -->
 	<sensor>
       <jointpos joint='ankle_hinge'/>
+      <touch site='front_foot_force_sensor_site'/>
+      <touch site='back_foot_force_sensor_site'/>
 	</sensor>
 
   

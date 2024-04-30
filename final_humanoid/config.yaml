@@ -2,7 +2,7 @@ config:
   perturbation_time: 0.5
   perturbation_magnitude: 200
   perturbation_period: 3.25
-  apply_perturbation: True
+  apply_perturbation: False
   ankle_position_setpoint_radians: 0.0872665
   ankle_initial_position_radians: 0.0872665
   foot_angle_initial_position_radians: 0

@@ -6,12 +6,12 @@ config:
   rolling_friction_constant: 0.9
   ankle_position_setpoint: 0.0872665
   ankle_joint_initial_position: 0.0872665
-  simend: 8
+  simend: 5
   M_total: 80
   H_total: 1.78
   mp4_file_name: 'bangbang_trajectory.mp4'
   mp4_fps: 60
-  mp4_flag: True
+  mp4_flag: False
   translation_friction_constant: 0.9
   rolling_friction_constant: 0.9
   xml_path: 'muscle_humanoid.xml'

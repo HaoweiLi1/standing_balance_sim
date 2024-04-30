@@ -126,6 +126,9 @@ class muscleSim:
         body_com_data = np.empty((1,4))
         body_orientation_data = np.empty((1,9))
         perturbation_data_array = np.empty((1,2))
+        com_ext_force_data = np.empty((1,7))
+        constraint_frc_data = np.empty((1,5))
+        contact_force_sensor = np.empty((1,3))
 
         params = self.load_params_from_yaml('config.yaml')
 
@@ -199,7 +202,7 @@ class muscleSim:
         opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = params['config']['visualize_actuators']
         # opt.flags[mj.mjtVisFlag.mjVIS_COM] = True
         # opt.flags[mj.mjtLabel.mjLABEL_JOINT] = True
-        # opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
+        opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
         # opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
         # opt.flags[mj.mjtFrame.mjFRAME_CONTACT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_BODY] = True
@@ -319,8 +322,8 @@ class muscleSim:
                 mj.mj_step(model, data)
             
                 # collect data from the control log if it isn't empty, this is used in the PD control mode
-                if not control_log_queue.empty():
-                    control_log_array = np.vstack((control_log_array, control_log_queue.get()))
+                
+                control_log_array = np.vstack((control_log_array, np.array([data.time,data.qfrc_actuator[0]]) ))
                 
                 # collect data from perturbation for now perturbation is 1D so we have (n,2) array of pert. data
                 if not perturbation_datalogger_queue.empty():
@@ -335,6 +338,9 @@ class muscleSim:
                 joint_velocity_data = np.vstack((joint_velocity_data, np.array([data.time, 180/np.pi*data.qvel[ankle_joint_id]]) ))
                 goal_position_data = np.vstack((goal_position_data, np.array([0,180/np.pi*self.ankle_position_setpoint]) ))
                 # collect center of mass data for ID associated with human body element of XML model
+                constraint_frc_data = np.vstack((constraint_frc_data, np.array([data.time,data.qfrc_constraint[0],data.qfrc_constraint[1],data.qfrc_constraint[2],data.qfrc_constraint[3]])))
+                contact_force_sensor = np.vstack((contact_force_sensor, np.array([data.time, data.sensordata[1], data.sensordata[2]]) ))
+
                 com = data.xipos[human_body_id]
                 # collect 1x9 orientation vector for ID associated with human body element of XML model
                 # format is [r_11, r_12, r_13, r_21, r_22, r_23, r_31, r_32, r_33]
@@ -384,10 +390,12 @@ class muscleSim:
         
         print('terminated')
         glfw.terminate()
-
     
-        # need this to turn off the pertuabtion thread when the simulation code is done running
-        
+        np.savetxt('joint_position_data', joint_position_data, delimiter=",", fmt='%.3f')
+        np.savetxt('joint_velocity_data', joint_velocity_data, delimiter=",", fmt='%.3f')
+        np.savetxt('constraint_frc_data', constraint_frc_data, delimiter=',', fmt='%.3f')
+        np.savetxt('perturbation_data', perturbation_data_array, delimiter=",",fmt="%.3f")
+        np.savetxt('contact_force_sensor', contact_force_sensor, delimiter=',', fmt="%.3f")
 
         ##### PLOTTING CODE ######################
         ##########################################
@@ -409,7 +417,7 @@ class muscleSim:
                             "joint actual pos.",
                             "joint goal pos.",
                             "joint vel.",
-                            "control torque")
+                            "front muscle control input")
 
         ###########################################
         ###########################################

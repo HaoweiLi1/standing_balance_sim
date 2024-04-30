@@ -233,10 +233,10 @@ class ankleTorqueControl:
         opt.flags[mj.mjtVisFlag.mjVIS_JOINT] = params['config']['visualize_joints']
         opt.flags[mj.mjtVisFlag.mjVIS_ACTUATOR] = params['config']['visualize_actuators']
         opt.flags[mj.mjtVisFlag.mjVIS_COM] = params['config']['visualize_center_of_mass']
-        opt.flags[mj.mjtFrame.mjFRAME_GEOM] = False
+        opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
         # opt.flags[mj.mjtLabel.mjLABEL_JOINT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_GEOM] = True
-        opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
+        # opt.flags[mj.mjtFrame.mjFRAME_WORLD] = True 
         # opt.flags[mj.mjtFrame.mjFRAME_CONTACT] = True
         # opt.flags[mj.mjtFrame.mjFRAME_BODY] = True
         # opt.mjVIS_COM = True
@@ -443,8 +443,6 @@ class ankleTorqueControl:
         print('terminated')
         glfw.terminate()
 
-
-        # need this to turn off the pertuabtion thread when the simulation code is done running
         np.savetxt('joint_position_data', joint_position_data, delimiter=",", fmt='%.3f')
         np.savetxt('joint_velocity_data', joint_velocity_data, delimiter=",", fmt='%.3f')
         np.savetxt('constraint_frc_data', constraint_frc_data, delimiter=',', fmt='%.3f')
