@@ -208,7 +208,7 @@ We apply the perturbation to `data.xfrc_applied[2]` because the *long link* cent
 7. Pass the `controller` method into the MuJoCo backend (toggled on/off by the user) <br>
 8. Start the perturbtion thread (toggled on/off by the user) <br>
 
-Now that the setup is complete, we may advance the simulation with time. A `while` loop is used to repeatedly call `mujoco.mj_step` until the user-specified `simend` time is met (configure this in `config.yaml`). A lot happens in each call of the `mujoco.mj_step` function; in particular: <br>
+Now that the setup is complete, we may advance the simulation with the user specified `timestep` (configured this in `config.yaml`). A `while` loop is used to repeatedly call `mujoco.mj_step` until the user-specified `simend` time is met (configure this in `config.yaml`). A lot happens in each call of the `mujoco.mj_step` function; in particular: <br>
 1. Rigid body dynamics are integrated with simulation ODE solver <br>
 2. Contact solver constraints are updated <br>
 3. Controller is called (one, or multiple times depending on the solver/simulation settings). I *think* in my simulation the controller is called once per time step, but I am not 100% sure. <br>
