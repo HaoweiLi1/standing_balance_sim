@@ -114,8 +114,6 @@
 
     
 	<actuator>
-      
-      
       <muscle name="front_muscle" tendon="front_tendon" force="1200" />
       <muscle name="back_muscle" tendon="back_tendon" force="1200" />
   </actuator>

@@ -135,7 +135,7 @@ class muscleSim:
         simend = params['config']['simend']   # duration of simulation
         
         self.ankle_position_setpoint = params['config']['ankle_position_setpoint']
-        ankle_joint_initial_position = self.ankle_position_setpoint # ankle joint initial angle
+        ankle_joint_initial_position = params['config']['ankle_joint_initial_position'] # ankle joint initial angle
 
         translation_friction_constant = params['config']['translation_friction_constant']
         rolling_friction_constant = params['config']['rolling_friction_constant']
