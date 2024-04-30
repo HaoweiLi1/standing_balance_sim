@@ -161,6 +161,17 @@ To run the `muscle_humanoid` simulation:
 This section highlights how the various `humanoid` simulation classes are structured. There are three main methods, which are `controller`, `generate_large_impulse`, and `run`. Hopefully these are intuitively named, but for clarity, the `controller` class runs the control law during the simulation update, and assigns control inputs to the `<actuator>` elements in our model. The `generate_large_impulse` method generates quasi-impulse perturbations of varying magnitude, pulse width, and frequency; this method is called in a separate thread from the simulation thread. A future work for this tool would be to implement the perturbation in the actual simulation update, rather than in a separate thread. The two threads running simultaneously does not cause problems, but leads to perturbations that do not quite align with the user specified parameters in `config.yaml` (namely the perturbation pulse width). The `run` method loads the XML model, and runs the simulation.
 
 ### Controller Method
+The `controller` method assigns control inputs to the `data.ctrl` MuJoCo struct, which subsequently applies these inputs to the various actuators in our MuJoCo XML model. <br>
+
+In Figure CM.1 one may see the linear gravity compensation controller that is running in the `initial_humanoid`, `test_humanoid`, and `final_humanoid` simulations.
+
+![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/aca2baf2-8311-47dc-abdf-2832663a33d9) <br>
+**Figure CM.1.** Linear Gravity Compensation Controller
+
+Use the `data.sensordata` attribute to read from the sensors that exist in the XML model structure. `data.sensordata[0]` corresponds to the `jointpos` sensor that I have placed at the ankle joint, to measure the angular position, $\theta$, of the ankle joint. We compare `data.sensordata[0]` to the ankle joint setpoint, and set the controller output with the linear gravity compensation control law: $\tau = K_P \cdot errror$. The output torque is assigned to the `data.ctrl[0]` attribute, which corresponds to the torque input $\tau$ in Figure I.1's theoretical model; in the MuJoCo XML structure the ankle actuator is a `motor` MuJoCo element (Figure CM.2).
+
+![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/347d4c61-c4f0-4910-81a0-a4bde3e197f5)
+**Figure CM.2.** Ankle torque input implemented in MuJoCo XML model.
 
 ### Perturbation Method
 
