@@ -10,8 +10,8 @@ Table of contents
 <!--ts-->
 
    * [How to download the Human Standing Balance Repository](#Downloading-the-Simulation-Repository)
-   * [Things to `pip install`](#Things-to-`pip-install`)
-   * [How to use `xml utilities`](How-to-use-XML-Utility-Script)
+   * [Libraries to Install](#Libraries-to-Install)
+   * [How to use the XML Utility Script](#How-to-use-XML-Utility-Script)
    * [How to use the Configuration file](#How-to-use-the-Configuration-file)
    * [Python/MATLAB Plotter Scripts](#Python/MATLAB-Plotter-Scripts)
    * [How to build the two-link model in MuJoCo](#How-to-build-the-two-link-model-in-MuJoCo)
@@ -30,7 +30,7 @@ Table of contents
 2. In the directory, run the command `git clone https://github.com/celwell20/standing_balance_sim.git`
 3. The Human Standing Balance Simulation should now be copied into the present terminal directory
 
-## Things to `pip install`
+## Libaries to Install
 
 To read from the `config.yaml` file please `pip` install the `pyyaml` libary: `python -m pip install pyyaml`
 
