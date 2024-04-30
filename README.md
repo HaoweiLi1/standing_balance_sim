@@ -33,12 +33,13 @@ Table of contents
 ## Libraries to Install
 
 Please `pip install` the following libraries if you do not already have them: <br>
-1. `pyyaml` library: `python -m pip install pyyaml` <br>
-2. `numpy`<br>
-3. `threading` <br>
-4. `xml` support library: `pip install xml-python` <br>
-5. `imageio` <br>
-6. `matplotlib` <br>
+1. MuJoCo library: `pip install mujoco`
+2. `pyyaml` library: `python -m pip install pyyaml` <br>
+3. `numpy`<br>
+4. `threading` <br>
+5. `xml` support library: `pip install xml-python` <br>
+6. `imageio` <br>
+7. `matplotlib` <br>
 
 ## Useful links
 
@@ -73,7 +74,7 @@ The `config.yaml` file is where you may toggle on/off a number of visualization/
 
 ## Python and MATLAB Plotter Scripts
 
-I have developed plotter tools in both Python and MATLAB. While the Python plotters are quicker to use, I would recommend using the MATLAB plotters as they are more updated and are used to produce the plots seen in the [Experiments](#Experiments) section.
+I have developed plotter tools in both Python and MATLAB. While the Python plotters are quicker to use, I would recommend using the MATLAB plotters as they are more updated and are used to produce the plots seen in the [Experiments](#Experiments) section (they look much nicer).
 
 Available Python Plotter Methods:
 1. `plot_3d_pose_trajectory` - plots the pose trajectory of the humanoid's center of mass as the simulation evovles
@@ -81,7 +82,7 @@ Available Python Plotter Methods:
 3. `plot_two_columns` - plots the first two columns of two arbitrary `numpy` arrays. Both array data series's are displayed on the same plot
 4. `plot_four_columns` - plots the first two columns of four arbitrary `numpy` arrays. All array data series are shown on the same plot.
 
-I have configured the `initial_humanoid`, `test_humanoid`, `final_humanoid`, and `muscle_humanoid` to automatically calculate the data of interest and save it to `numpy` arrays for processing in the Python plotters. **To turn the plotting visualization on/off, toggle the `plotter_flag` parameter in `config.yaml`.**
+I have configured the `initial_humanoid`, `test_humanoid`, `final_humanoid`, and `muscle_humanoid` simulations to automatically calculate the data of interest and save it to `numpy` arrays for processing in the Python plotters. **To turn the plotting visualization on/off, toggle the `plotter_flag` parameter in `config.yaml`.**
 
 Available MATLAB Plotter Methods: <br>
 1. `plotter.mlx` - creates a figure with four data series: <br>
@@ -96,7 +97,7 @@ Available MATLAB Plotter Methods: <br>
    c. Front and back contact forces, $F_{c,front}$ & $F_{c,back}$, versus time <br>
    `plotter_3.mlx` also produces a plot of only the $f_{perturbation}$ data series. <br>
 
-I have configured the `final_humanoid`, `test_humanoid`, and `muscle_humanoid` simulations to automatically calculate and save the data series' of interest to `.csv` files. So, you should be able to run either of those simulations, and then run the MATLAB plotters shortly after without modifying anything.
+I have configured the `final_humanoid`, `test_humanoid`, and `muscle_humanoid` simulations to automatically calculate and save the data series' of interest to `.csv` files. So, you should be able to run those simulations, and then run the MATLAB plotters shortly after without modifying anything.
 
 ## How to build the two-link model in MuJoCo
 
