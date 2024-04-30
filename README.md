@@ -127,6 +127,7 @@ https://github.com/celwell20/standing_balance_sim/assets/79417604/cdc0fe23-88d2-
 
 ### Muscle-Tendon Linear Gravity-Compensation Bang-Bang Controller:
 
-https://github.com/celwell20/standing_balance_sim/assets/79417604/78687d71-f343-4526-a50e-af664cc09076
+https://github.com/celwell20/standing_balance_sim/assets/79417604/8e0e0bf8-1a1c-4283-a04a-ed9c36c0b648
+
 
 
