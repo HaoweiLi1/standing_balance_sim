@@ -127,14 +127,14 @@ The `final_humanoid` simulation/directory is intended to be a location for compl
 
 The `initial_humanoid` simulation uses the MuJoCo `<motor>` element to actuate the two-link model; this model is dated compared to others in this repository. I left it in the repository because I didn't see a point in deleting it, but I highly recommend referencing `final_humanoid`, `test_humanoid`, and `muscle_humanoid` as they are much more recent. <br>
 
-To run the `initial_humanoid` simulation:
+To run the `initial_humanoid` simulation: <br>
 1. Open a terminal of your choice and enter the `standing_balance_sim` directory that is installed locally on your computer. <br>
 2. Enter the proper simulation directory: `cd initial_humanoid` <br>
 3. Run the command `python run_sim.py` in the terminal to run the simulation
 
 ### Final Humanoid Simulation
 
-To run the `final_humanoid` simulation:
+To run the `final_humanoid` simulation: <br>
 1. Open a terminal of your choice and enter the `standing_balance_sim` directory that is installed locally on your computer. <br>
 2. Enter the proper simulation directory: `cd final_humanoid` <br>
 3. Run the command `python run_sim.py` in the terminal to run the simulation
@@ -143,7 +143,7 @@ To run the `final_humanoid` simulation:
 
 The `test_humanoid` simulation uses the `<motor>` element to actuate the ankle. It is meant for developing new simulations, without fear of breaking any polished simulations (store these in `final_humanoid` or create another "humanoid" simulation directory and store your good simulations there). 
 
-To run the `test_humanoid` simulation:
+To run the `test_humanoid` simulation: <br>
 1. Open a terminal of your choice and enter the `standing_balance_sim` directory that is installed locally on your computer. <br>
 2. Enter the proper simulation directory: `cd test_humanoid` <br>
 3. Run the command `python run_sim.py` in the terminal to run the simulation
@@ -152,7 +152,7 @@ To run the `test_humanoid` simulation:
 
 The `muscle_humanoid` simulation is an exploratory exercise to learn about `<muscle>` and `<tendon>` elements available to users in MuJoCo. These would allow one to create a high-fidelity -- and more biologically accurate -- standing balance model that could be used in future works. For details on the `muscle_humanoid` XML implementation and control, see slides 150 and onwards in the [documentation powerpoint](#How-to-build-the-two-link-model-in-MuJoCo).
 
-To run the `muscle_humanoid` simulation:
+To run the `muscle_humanoid` simulation: <br>
 1. Open a terminal of your choice and enter the `standing_balance_sim` directory that is installed locally on your computer. <br>
 2. Enter the proper simulation directory: `cd muscle_humanoid` <br>
 3. Run the command `python run_sim.py` in the terminal to run the simulation
@@ -161,19 +161,40 @@ To run the `muscle_humanoid` simulation:
 This section highlights how the various `humanoid` simulation classes are structured. There are three main methods, which are `controller`, `generate_large_impulse`, and `run`. Hopefully these are intuitively named, but for clarity, the `controller` class runs the control law during the simulation update, and assigns control inputs to the `<actuator>` elements in our model. The `generate_large_impulse` method generates quasi-impulse perturbations of varying magnitude, pulse width, and frequency; this method is called in a separate thread from the simulation thread. A future work for this tool would be to implement the perturbation in the actual simulation update, rather than in a separate thread. The two threads running simultaneously does not cause problems, but leads to perturbations that do not quite align with the user specified parameters in `config.yaml` (namely the perturbation pulse width). The `run` method loads the XML model, and runs the simulation.
 
 ### Controller Method
-The `controller` method assigns control inputs to the `data.ctrl` MuJoCo struct, which subsequently applies these inputs to the various actuators in our MuJoCo XML model. <br>
+The `controller` method assigns control inputs to the `data.ctrl` MuJoCo struct, which subsequently applies these inputs to the various actuators in our MuJoCo XML model. To toggle the controller on/off, set the `controller_flag` parameter in the `config.yaml` file. <br>
 
-In Figure CM.1 one may see the linear gravity compensation controller that is running in the `initial_humanoid`, `test_humanoid`, and `final_humanoid` simulations.
+In Figure CM.1 one may see the linear gravity compensation controller that is running in the `initial_humanoid`, `test_humanoid`, and `final_humanoid` simulations. <br>
 
 ![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/aca2baf2-8311-47dc-abdf-2832663a33d9) <br>
-**Figure CM.1.** Linear Gravity Compensation Controller
+**Figure CM.1.** Linear Gravity Compensation Controller.
 
 Use the `data.sensordata` attribute to read from the sensors that exist in the XML model structure. `data.sensordata[0]` corresponds to the `jointpos` sensor that I have placed at the ankle joint, to measure the angular position, $\theta$, of the ankle joint. We compare `data.sensordata[0]` to the ankle joint setpoint, and set the controller output with the linear gravity compensation control law: $\tau = K_P \cdot errror$. The output torque is assigned to the `data.ctrl[0]` attribute, which corresponds to the torque input $\tau$ in Figure I.1's theoretical model; in the MuJoCo XML structure the ankle actuator is a `motor` MuJoCo element (Figure CM.2).
 
-![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/347d4c61-c4f0-4910-81a0-a4bde3e197f5)
+![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/347d4c61-c4f0-4910-81a0-a4bde3e197f5) <br>
 **Figure CM.2.** Ankle torque input implemented in MuJoCo XML model.
 
 ### Perturbation Method
+The quasi-perturbation method, `generate_large_impulse`, is able to generate square-wave inputs that have a specific magnitude, pulse width, and frequency (Figure CM.3). To toggle the perturbation on/off, set the `perturbation_flag` parameter in the `config.yaml` file. <br>
+
+![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/845acbe6-4ee8-485f-9971-184960c6c3db) <br>
+**Figure CM.3.** Quasi-impulse generator method. <br>
+
+This method is running in a separate thread from the simulation, which is executed in the `run` method. <br>
+
+![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/2b4918e7-0232-4093-b921-b66b0fce80c5) <br>
+**Figure CM.4.** Code responsible for starting the `generate_large_impulse` thread. <br>
+
+It is important to note that since we started the perturbation thread (we do this via `perturbation_thread.start()`) we must also terminate the perturbation thread when the simulation is done running, which we do via `perturbation_thread.join()` (Figure CM.5). <br>
+
+![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/2f323408-74f1-471b-b536-823c5f2bbf76) <br>
+**Figure CM.5.** This is the code in the `run` method that terminates the perturbation thread when the simulation is done running. <br>
+
+In the perturbation generator, the perturbation signal is written to a `Queue` which is, subsequently processed in the `run` script to apply the perturbation force to the humanoid's *long link* center of mass (Figure CM.6).
+
+![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/7ccf3587-68f3-47e6-8299-1e4e17119a96) <br>
+Figure CM.6. Applying the perturbation to the *long link* center of mass. <br>
+
+We apply the perturbation to `data.xfrc_applied[2]` because the *long link* center of mass is concentrated in third XML `geom` element, which is the *long link* point mass representation.
 
 ### Run Method
 
