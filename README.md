@@ -13,7 +13,7 @@ Table of contents
    * [Libraries to Install](#Libraries-to-Install)
    * [How to use the XML Utility Script](#How-to-use-XML-Utility-Script)
    * [How to use the Configuration file](#How-to-use-the-Configuration-file)
-   * [Python/MATLAB Plotter Scripts](#Python/MATLAB-Plotter-Scripts)
+   * [Python/MATLAB Plotter Scripts](#Python-and-MATLAB-Plotter-Scripts)
    * [How to build the two-link model in MuJoCo](#How-to-build-the-two-link-model-in-MuJoCo)
    * [How to run the Human Standing Balance Simulation](#Running-the-Human-Standing-Balance-Simulation)
      * [Initial Humanoid Simulation](#Initial-Humanoid-Simulation)
@@ -30,7 +30,7 @@ Table of contents
 2. In the directory, run the command `git clone https://github.com/celwell20/standing_balance_sim.git`
 3. The Human Standing Balance Simulation should now be copied into the present terminal directory
 
-## Libaries to Install
+## Libraries to Install
 
 To read from the `config.yaml` file please `pip` install the `pyyaml` libary: `python -m pip install pyyaml`
 
@@ -46,7 +46,7 @@ To apply these literature estimates to our XML model of interest, I used the `El
 
 Write stuff about how the `config.yaml` file works
 
-## Python/MATLAB Plotter Scripts
+## Python and MATLAB Plotter Scripts
 
 Write stuff about how to use the Python and MATLAB plotter tools
 
