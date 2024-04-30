@@ -11,6 +11,7 @@ Table of contents
 
    * [How to download the Human Standing Balance Repository](#Downloading-the-Simulation-Repository)
    * [Libraries to Install](#Libraries-to-Install)
+   * [Useful Links](#Useful-links)
    * [How to use the XML Utility Script](#How-to-use-XML-Utility-Script)
    * [How to use the Configuration file](#How-to-use-the-Configuration-file)
    * [Python/MATLAB Plotter Scripts](#Python-and-MATLAB-Plotter-Scripts)
@@ -20,7 +21,6 @@ Table of contents
      * [Test Humanoid Simulation](#Test-Humanoid-Simulation)
      * [Final Humanoid Simulation](#Final-Humanoid-Simulation)
      * [Muscle-Tendon Humanoid Simulation](#Muscle-Tendon-Humanoid-Simulation)
-   * [Useful Links](#Useful-links)
    * [Experiments](#Experiments)
 <!--te-->
 
@@ -39,6 +39,19 @@ Please `pip install` the following libraries if you do not already have them: <b
 4. `xml` support library: `pip install xml-python` <br>
 5. `imageio` <br>
 6. `matplotlib` <br>
+
+## Useful links
+
+1. [MuJoCo Github Repo](https://github.com/google-deepmind/mujoco?tab=readme-ov-file) <br>
+2. **[MuJoCo Python Bindings](https://mujoco.readthedocs.io/en/latest/python.html)**
+3. [XML reference](https://mujoco.readthedocs.io/en/stable/XMLreference.html#body-geom) - useful for understanding how to create MJCF XML Mujoco models.
+4. [MuJoCo Types API Reference](https://mujoco.readthedocs.io/en/stable/APIreference/APItypes.html#mjtsensor) - API reference for parameters related to MuJoCo model, data, visualization, and other simulation values.
+      [MuJoCo full API Reference](https://mujoco.readthedocs.io/en/latest/APIreference/index.html) 
+5. [Useful MuJoCo Jupyter Notebook Tutorial](https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/python/tutorial.ipynb#scrollTo=Z6NDYJ8IOVt7) - tutorial for setting up MuJoCo models, simulation, and visualizers
+6. [MuJoCo Modeling Reference](https://mujoco.readthedocs.io/en/stable/modeling.html) - describes the process of creating, compiling, controlling, and visualizaing MuJoCo models.
+7. [MuJoCo Computation Reference](https://mujoco.readthedocs.io/en/latest/computation/index.html) - describes the math use to evaluate a MuJoCo simulation.
+8. [MuJoCo Simulation Reference](https://mujoco.readthedocs.io/en/latest/programming/simulation.html#forward-dynamics)
+9. [MuJoCo Visualization Reference](https://mujoco.readthedocs.io/en/latest/programming/visualization.html#rendering)
 
 ## How to use XML Utility Script
 
@@ -93,8 +106,8 @@ https://umich-my.sharepoint.com/:p:/g/personal/ctelwell_umich_edu/EaIz1NFO1XFEkz
 ## Running the Human Standing Balance Simulation
 
 Within this repository are three simulations:
-1. The first simulation, `initial_humanoid`, is the first revision of the human standing balance model built in MuJoco. It is fully functional for the purposes of representing the theoretical two-link model.
-2. The second simulation, `final_humanoid`, is the finished version of the humand standing balance model. The only difference between `final_humanoid` and `initial_humanoid` is that the reference frames of the links are rotated $180\degree$ about the worldframe $z$-axis (Figure R.1)
+1. The first simulation, `initial_humanoid`, is the first revision of the human standing balance model built in MuJoco. It is fully functional for the purposes of representing the theoretical two-link model. <br>
+2. The second simulation, `final_humanoid`, is the finished version of the humand standing balance model. The only difference between `final_humanoid` and `initial_humanoid` is that the reference frames of the links are rotated $180\degree$ about the worldframe $z$-axis (Figure R.1). This rotation is applied so that the reference frames of the `foot` and `long_link` MuJoCo `geom` elements align with the convention stated in the theoretical model.
 
 ![inital_versus_final_link_frames](https://github.com/celwell20/standing_balance_sim/assets/79417604/699ff693-4db3-4bdb-8308-65ea13b33858)
 **Figure R.1.** Reference Frame Orientations for World Frame, Initial humanoid link frames, and Final humanoid link frames.
@@ -107,31 +120,37 @@ The `final_humanoid` simulation/directory is intended to be a location for compl
 
 ### Initial Humanoid Simulation
 
-The initial humanoid uses the MuJoCo `<motor>` element to actuate the two-link model; this model is not very up-to-date at this point. I left it in the repository because I didn't see a point in deleting it, but I highly recommend referencing `final_humanoid`, `test_humanoid`, and `muscle_humanoid` as they are much more recent. 
+The `initial_humanoid` simulation uses the MuJoCo `<motor>` element to actuate the two-link model; this model is dated compared to others in this repository. I left it in the repository because I didn't see a point in deleting it, but I highly recommend referencing `final_humanoid`, `test_humanoid`, and `muscle_humanoid` as they are much more recent. <br>
 
-### Test Humanoid Simulation
+To run the `initial_humanoid` simulation:
+1. Open a terminal of your choice and enter the `standing_balance_sim` directory that is installed locally on your computer. <br>
+2. Enter the proper simulation directory: `cd initial_humanoid` <br>
+3. Run the command `python run_sim.py` in the terminal to run the simulation
 
 ### Final Humanoid Simulation
 
+To run the `final_humanoid` simulation:
+1. Open a terminal of your choice and enter the `standing_balance_sim` directory that is installed locally on your computer. <br>
+2. Enter the proper simulation directory: `cd final_humanoid` <br>
+3. Run the command `python run_sim.py` in the terminal to run the simulation
+
+### Test Humanoid Simulation
+
+The `test_humanoid` simulation uses the `<motor>` element to actuate the ankle. It is meant for developing new simulations, without fear of breaking any polished simulations (store these in `final_humanoid` or create another "humanoid" simulation directory and store your good simulations there). 
+
+To run the `test_humanoid` simulation:
+1. Open a terminal of your choice and enter the `standing_balance_sim` directory that is installed locally on your computer. <br>
+2. Enter the proper simulation directory: `cd test_humanoid` <br>
+3. Run the command `python run_sim.py` in the terminal to run the simulation
+
 ### Muscle-Tendon Humanoid Simulation
 
+The `muscle_humanoid` simulation is an exploratory exercise to learn about `<muscle>` and `<tendon>` elements available to users in MuJoCo. These would allow one to create a high-fidelity -- and more biologically accurate -- standing balance model that could be used in future works. For details on the `muscle_humanoid` XML implementation and control, see slides 150 and onwards in the [documentation powerpoint](#How-to-build-the-two-link-model-in-MuJoCo).
 
-
-## Useful links
-
-[MuJoCo Github Repo](https://github.com/google-deepmind/mujoco?tab=readme-ov-file)
-**[MuJoCo Python Bindings](https://mujoco.readthedocs.io/en/latest/python.html)**
-
-1. [XML reference](https://mujoco.readthedocs.io/en/stable/XMLreference.html#body-geom) - useful for understanding how to create MJCF XML Mujoco models.
-2. [MuJoCo Types API Reference](https://mujoco.readthedocs.io/en/stable/APIreference/APItypes.html#mjtsensor) - API reference for parameters related to MuJoCo model, data, visualization, and other simulation values.
-      [MuJoCo full API Reference](https://mujoco.readthedocs.io/en/latest/APIreference/index.html) 
-3. [Useful MuJoCo Jupyter Notebook Tutorial](https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/python/tutorial.ipynb#scrollTo=Z6NDYJ8IOVt7) - tutorial for setting up MuJoCo models, simulation, and visualizers
-4. [MuJoCo Modeling Reference](https://mujoco.readthedocs.io/en/stable/modeling.html) - describes the process of creating, compiling, controlling, and visualizaing MuJoCo models.
-5. [MuJoCo Computation Reference](https://mujoco.readthedocs.io/en/latest/computation/index.html) - describes the math use to evaluate a MuJoCo simulation.
-6. [MuJoCo Simulation Reference](https://mujoco.readthedocs.io/en/latest/programming/simulation.html#forward-dynamics)
-7. [MuJoCo Visualization Reference](https://mujoco.readthedocs.io/en/latest/programming/visualization.html#rendering)
-
-
+To run the `muscle_humanoid` simulation:
+1. Open a terminal of your choice and enter the `standing_balance_sim` directory that is installed locally on your computer. <br>
+2. Enter the proper simulation directory: `cd muscle_humanoid` <br>
+3. Run the command `python run_sim.py` in the terminal to run the simulation
 
 ## Experiments
 
