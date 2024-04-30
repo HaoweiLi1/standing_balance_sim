@@ -192,11 +192,28 @@ It is important to note that since we started the perturbation thread (we do thi
 In the perturbation generator, the perturbation signal is written to a `Queue` which is, subsequently processed in the `run` script to apply the perturbation force to the humanoid's *long link* center of mass (Figure CM.6).
 
 ![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/7ccf3587-68f3-47e6-8299-1e4e17119a96) <br>
-Figure CM.6. Applying the perturbation to the *long link* center of mass. <br>
+**Figure CM.6.** Applying the perturbation to the *long link* center of mass. <br>
 
 We apply the perturbation to `data.xfrc_applied[2]` because the *long link* center of mass is concentrated in third XML `geom` element, which is the *long link* point mass representation.
 
 ### Run Method
+
+`run` is arguably the most important method in the various simulation classes available in this repository. It is responsible for the following (in roughly sequential order): <br>
+1. Reads from the `config.yaml` file and parses all the user-specified arguments <br>
+2. Calls the `xml_utility` script to calculate literature estimtes and apply them to the XML model <br>
+3. Parses the XML model and loads it into the MuJoCo backend <br>
+4. Creates the GLFW and OpenGL windows for rendering; I don't really understand how the GLFW or OpenGL stuff works, but my code uses it to open a viewing window. I'll aim to post more updates that explain how this part of the simulation functions. <br>
+5. Configures (a lot of) visualization options, adjusts simulation camera POV <br>
+6. Sets joint position and velocity initial conditions <br>
+7. Pass the `controller` method into the MuJoCo backend (toggled on/off by the user) <br>
+8. Start the perturbtion thread (toggled on/off by the user) <br>
+
+Now that the setup is complete, we may advance the simulation with time. A `while` loop is used to repeatedly call `mujoco.mj_step` until the user-specified `simend` time is met (configure this in `config.yaml`). A lot happens in each call of the `mujoco.mj_step` function; in particular: <br>
+1. Rigid body dynamics are integrated with simulation ODE solver <br>
+2. Contact solver constraints are updated <br>
+3. Controller is called (one, or multiple times depending on the solver/simulation settings). I *think* in my simulation the controller is called once per time step, but I am not 100% sure. <br>
+
+Outside of `mujoco.mj_step`, not too much happens in the `while` loop other than reading from the perturbation `Queue` and applying the perturbation forces to the humanoid if the `Queue` is not empty. Additionally, all the datalogging occurs in the simulation `while` loop.
 
 ## Experiments
 
