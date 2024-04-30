@@ -125,6 +125,8 @@ https://github.com/celwell20/standing_balance_sim/assets/79417604/cdc0fe23-88d2-
 ![image](https://github.com/celwell20/standing_balance_sim/assets/79417604/8d83e709-1281-4722-9ac1-62b554dac016)\
 **Figure E.3.** Joint Angle, Joint Velocity, Front/Back Contact Forces, and Perturbation Input during Simulation.
 
-### Muscle-Tendon Bang-Bang Controller:
+### Muscle-Tendon Linear Gravity-Compensation Bang-Bang Controller:
 
-https://github.com/celwell20/standing_balance_sim/assets/79417604/dbbbcf62-1338-4276-9f76-8e3d9354ff0e
+https://github.com/celwell20/standing_balance_sim/assets/79417604/78687d71-f343-4526-a50e-af664cc09076
+
+
