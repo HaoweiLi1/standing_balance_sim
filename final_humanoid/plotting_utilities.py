@@ -108,6 +108,50 @@ def plot_two_columns(data_array1, data_array2, y_axis1, y_axis2):
     # Show the plot
     plt.show()
 
+def plot_three_columns(data_array1, data_array2, data_array3, y_axis1, y_axis2, y_axis3):
+    """
+    Plot three data arrays together, using the first column of each array as time 
+    and the second column as the variable to plot.
+
+    Parameters:
+    - data_array1: NumPy array with at least two columns
+    - data_array2: NumPy array with at least two columns
+    - data_array3: NumPy array with at least two columns
+    - y_axis1: Label for the first variable
+    - y_axis2: Label for the second variable
+    - y_axis3: Label for the third variable
+
+    Returns:
+    - None
+    """
+    # Check if arrays have at least two columns
+    if (data_array1.shape[1] < 2 or
+        data_array2.shape[1] < 2 or
+        data_array3.shape[1] < 2):
+        print("Error: All input arrays must have at least two columns.")
+        return
+
+    # Extract time values and data values
+    x_values = data_array1[1:, 0]
+    y_values1 = data_array1[1:, 1]
+    y_values2 = data_array2[1:, 1]
+    y_values3 = data_array3[1:, 1]
+
+    # Create the plot
+    plt.plot(x_values, y_values1, linestyle='-', color='b', label=y_axis1)
+    plt.plot(x_values, y_values2, linestyle='-', color='r', label=y_axis2)
+    plt.plot(x_values, y_values3, linestyle='-', color='g', label=y_axis3)
+
+    # Add labels and title
+    plt.xlabel('$\textnormal{Time [sec]}$')
+    plt.title(f"{y_axis1}, {y_axis2}, and {y_axis3} versus Time")
+
+    # Add legend
+    plt.legend()
+
+    # Show the plot
+    plt.show()
+
 def plot_four_columns(data_array1, data_array2, data_array3, data_array4, y_axis1, y_axis2, y_axis3, y_axis4):
     """
     Plot the data in the first column of each data array versus the data in the second column for all four datasets.

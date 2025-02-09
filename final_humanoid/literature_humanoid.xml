@@ -1,8 +1,6 @@
 <mujoco model="initial_humanoid">
   
   <option gravity="0 0 -9.81">
-    
-    <flag sensornoise="disable" />
   </option>
 
   
@@ -96,8 +94,8 @@
 
     
 	<actuator>
-      <motor joint="ankle_hinge" name="ankle_actuator" gear="15" ctrlrange="-10 10" />
-      
+      <motor joint="ankle_hinge" name="human_ankle_actuator" gear="15" ctrlrange="-10 10" ctrllimited="true" /> 
+      <motor joint="ankle_hinge" name="exo_ankle_actuator" gear="10" ctrlrange="-10 10" ctrllimited="true" />
 	</actuator>
 
     

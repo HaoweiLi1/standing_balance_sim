@@ -9,7 +9,8 @@ def calculate_kp_and_geom(weight, height):
     l_foot = 0.152*H_total
     h_f = 0.039*H_total
     a = 0.19*l_foot
-    K_p = m_body * 9.81 * l_COM
+    K_p = m_body * 9.81 * l_COM 
+    # print(K_p)
 
     return h_f, m_feet, m_body, l_COM, l_foot, a, K_p
 

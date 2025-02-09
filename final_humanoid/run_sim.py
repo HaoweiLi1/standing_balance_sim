@@ -18,7 +18,8 @@ import yaml
 from plotting_utilities import plot_3d_pose_trajectory, \
                                plot_columns, \
                                plot_four_columns, \
-                               plot_two_columns
+                               plot_two_columns, \
+                               plot_three_columns
 
 from xml_utilities import calculate_kp_and_geom, set_geometry_params
 
@@ -50,6 +51,9 @@ class ankleTorqueControl:
         self.mp4_flag = False
         self.K_p = 1
         self.pertcount = 0
+        self.prev_error = 0  # 存储上一个时间步的误差
+        self.Kp_exo = 700
+        self.Kd_exo = 20
 
     # this function has to stay in this script per MuJoCo documentation
     def controller(self, model, data):
@@ -60,14 +64,88 @@ class ankleTorqueControl:
         """
         
         error = self.ankle_position_setpoint - data.sensordata[0]
-        # GRAVITY COMPENSATION #
-        human_torque = self.K_p * error # + K_d * (error - prev_error) / model.opt.timestep
+        # # GRAVITY COMPENSATION #
+        # # human_torque = self.K_p * error 
+        # # data.ctrl[0] = human_torque
+        # # print(data.ctrl[0])
+        # # PD #
+        # Kp =5000
+        # Kd =10
+        # delta_error = error - self.prev_error
+        # delta_time = model.opt.timestep  # MuJoCo 仿真步长
+        # derivative = delta_error / delta_time  # 计算微分项
+        # human_torque = Kp * error + Kd * derivative
+        # data.ctrl[0] = human_torque
+        # self.prev_error = error
 
-        exo_torque = -1*(human_torque)
+        ################## test MRTD ##########
+        # PD 控制计算 human torque
+        Kp = 500
+        Kd = 10
+        delta_error = error - self.prev_error
+        delta_time = model.opt.timestep
+        derivative = delta_error / delta_time
+        desired_torque = Kp * error + Kd * derivative
+
+        # 确保 prev_torque 初始化
+        if not hasattr(self, 'prev_torque'):
+            self.prev_torque = 0.0
+            self.prev_error = 0.0
+
+        prev_torque = self.prev_torque
+
+        # MRTD 约束（单位 Nm/s）
+        MRTD_df = 148/15  # Dorsiflexion（背屈）
+        MRTD_pf = 389/15  # Plantarflexion（跖屈）
+
+        # 计算 torque 变化量
+        delta_torque = desired_torque - prev_torque
+
+        # 施加 MRTD 约束
+        if delta_torque > 0:
+            max_increase = MRTD_df * delta_time
+            delta_torque = min(delta_torque, max_increase)
+        else:
+            max_decrease = -MRTD_pf * delta_time
+            delta_torque = max(delta_torque, max_decrease)
+
+        # 更新 human torque
+        human_torque = prev_torque + delta_torque
+
+        # 存储数据
+        self.prev_torque = human_torque
+        self.prev_error = error
+
+        # 施加到 MuJoCo 控制
         data.ctrl[0] = human_torque
+
+        ##############################################
         
-        # prev_error = error
+
+        # k_exo = 0.5  # 读取 config 里的补偿系数
+        # exo_torque = - k_exo * data.qfrc_bias[3]  # 计算外骨骼力矩
+        # data.ctrl[1] = exo_torque
+
+        # 计算外骨骼力矩
+        # 计算外骨骼的 PD 控制
+        # 获取当前踝关节角度和角速度
+        current_angle = data.qpos[3]   # 踝关节当前角度
+        current_velocity = data.qvel[3]  # 踝关节当前角速度
+
+        # PD 控制计算
+        exo_error = self.ankle_position_setpoint - current_angle  # 角度误差
+        exo_torque = self.Kp_exo * exo_error - self.Kd_exo * current_velocity
+
+        # 施加外骨骼力矩
+        data.ctrl[1] = exo_torque
+        # print(data.ctrl[1])
             
+        # print("Timestep:", data.time)
+        # print("Control torque:", data.ctrl[0]*15 + data.ctrl[1]*5)  # 控制器指定的总力矩
+        # print("Actual joint torque:", data.qfrc_actuator[3])        # 实际执行的关节力矩
+        # print("Passive damping:", data.qfrc_passive[3])             # 被动阻尼力矩
+        # print("Constraint force:", data.qfrc_constraint[3])         # 约束力产生的力矩
+        # # print("Contact force:", data.qfrc_contact[3])               # 接触力产生的力矩
         # Log the actuator torque and timestep to an array for later use
         # control_torque_time_array = np.array([data.time, human_torque])
         # control_log_queue.put(control_torque_time_array)
@@ -118,7 +196,7 @@ class ankleTorqueControl:
             time.sleep(wait_time)
             
             # Generate a large impulse
-            perturbation = np.random.uniform(perturbation_magnitude, perturbation_magnitude+10)
+            perturbation = np.random.uniform(perturbation_magnitude, perturbation_magnitude+0)
 
             # this will generate either -1 or 1
             direction_bool = np.random.choice([-1,1])
@@ -156,6 +234,9 @@ class ankleTorqueControl:
     def run(self):
 
         # precallocating arrays and queues for data sharing and data collection
+        human_torque_data = np.empty((1,2))
+        exo_torque_data = np.empty((1,2))
+        ankle_torque_data = np.empty((1,2))
         control_log_array = np.empty((1,2))
         goal_position_data = np.empty((1,2))
         joint_position_data = np.empty((1,2))
@@ -166,6 +247,8 @@ class ankleTorqueControl:
         com_ext_force_data = np.empty((1,7))
         constraint_frc_data = np.empty((1,5))
         contact_force_sensor = np.empty((1,3))
+
+        gravity_torque_data = np.empty((1,2))  # 修改这里
         
         params = self.load_params_from_yaml('config.yaml')
 
@@ -290,7 +373,7 @@ class ankleTorqueControl:
         data.qvel[0]= 0              # hinge joint at top of body
         data.qvel[1]= 0              # slide / prismatic joint at top of body in x direction
         data.qvel[2]= 0              # slide / prismatic joint at top of body in z direction
-        data.qvel[3]= 0           # hinge joint at ankle
+        data.qvel[3]= 0              # hinge joint at ankle
 
         # INITIAL CONDITIONS FOR JOINT POSITION
         data.qpos[0]=params['config']['foot_angle_initial_position_radians'] # hinge joint at top of body
@@ -300,9 +383,15 @@ class ankleTorqueControl:
 
         # ID number for the ankle joint, used for data collection
         ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
-
+        # print(ankle_joint_id)
         # ID number for the body geometry
         human_body_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_BODY, "long_link_body")
+
+
+        # human_actuator_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_ACTUATOR, "ankle_actuator")
+        # exo_actuator_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_ACTUATOR, "exo_ankle_actuator")
+        # print(human_actuator_id)
+        # print(exo_actuator_id)
 
         recorded_control_counter = 0
 
@@ -334,10 +423,11 @@ class ankleTorqueControl:
         start_time = time.time()
         print(f'simulation duration: {simend} seconds')
 
-
+        
         while not glfw.window_should_close(window): # glfw.window_should_close() indicates whether or not the user has closed the window
             simstart = data.time
             # print(data.time)
+            
             while (data.time - simstart < 1.0/60.0):
                 # print(data.qpos[0])
                 # print(f'time delta: {time.time() - start_time}')
@@ -375,14 +465,34 @@ class ankleTorqueControl:
                     perturbation_data_array = np.vstack((perturbation_data_array, np.array([data.time, 0.]) ))
 
                 mj.mj_step(model, data)
-
+                # input_torque = data.ctrl[0]   # 期望控制输入
+                # actuator_torque = data.qfrc_actuator[3]  # 执行器的实际力矩
+                # print(f"Time: {data.time:.3f}, Input Torque: {input_torque:.4f}, Actuator Torque: {actuator_torque:.4f}")
+                gravity_torque = data.qfrc_bias[3] 
+                gravity_torque_data = np.vstack((gravity_torque_data, np.array([data.time, gravity_torque])))  # 修改这里
                 # collect data from the control log if it isn't empty, this is used in the PD control mode
                 # print(f'actuator force: {data.qfrc_actuator[3]}')
                 control_log_array = np.vstack((control_log_array, np.array([data.time,data.qfrc_actuator[3]]) ))
                 
                 # collect data from perturbation for now perturbation is 1D so we have (n,2) array of pert. data
-                
+                # print("Timestep:", data.time)
+                # print("human torque:", data.ctrl[0]*15)  # 控制器指定的总力矩
+                # print("Actual joint torque:", data.qfrc_actuator[3])        # 实际执行的关节力矩
+                # print("Passive damping:", data.qfrc_passive[3])             # 被动阻尼力矩
+                # print("Constraint force:", data.qfrc_constraint[3])         # 约束力产生的力矩
                     
+                # human_torque_executed = 15 * data.ctrl[0]
+                # exo_torque_executed = 5 * data.ctrl[1]
+                human_actuator_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_ACTUATOR, "human_ankle_actuator")
+                exo_actuator_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_ACTUATOR, "exo_ankle_actuator")
+                human_torque_executed = data.actuator_force[human_actuator_id] * 15
+                exo_torque_executed = data.actuator_force[exo_actuator_id] * 10
+                ankle_torque_executed = data.qfrc_actuator[ankle_joint_id]
+
+                human_torque_data = np.vstack((human_torque_data, np.array([data.time, human_torque_executed])))
+                exo_torque_data = np.vstack((exo_torque_data, np.array([data.time, exo_torque_executed])))
+                ankle_torque_data = np.vstack((ankle_torque_data, np.array([data.time, ankle_torque_executed])))
+
                 # collect joint position and velocity data from simulation for visualization
                 joint_position_data = np.vstack((joint_position_data, np.array([data.time, 180/np.pi*data.qpos[ankle_joint_id]]) ))
                 joint_velocity_data = np.vstack((joint_velocity_data, np.array([data.time, 180/np.pi*data.qvel[ankle_joint_id]]) ))
@@ -452,7 +562,10 @@ class ankleTorqueControl:
         np.savetxt('constraint_frc_data', constraint_frc_data, delimiter=',', fmt='%.3f')
         np.savetxt('perturbation_data', perturbation_data_array, delimiter=",",fmt="%.3f")
         np.savetxt('contact_force_sensor', contact_force_sensor, delimiter=',', fmt="%.3f")
-
+        np.savetxt('gravity_torque_data', gravity_torque_data, delimiter=",", fmt='%.3f')
+        np.savetxt('control_torque', control_log_array, delimiter=",", fmt='%.3f')
+        np.savetxt('human_torque_data.csv', human_torque_data, delimiter=",", fmt='%.3f')
+        np.savetxt('exo_torque_data.csv', exo_torque_data, delimiter=",", fmt='%.3f')
         # plot_columns(contact_force_sensor[:,0:2], "front contact force versus time")
         # plot_two_columns(contact_force_sensor[:,0:2], contact_force_sensor[:,[0,2]], "Front Contact Force", "Back Contact Force")
         ##### PLOTTING CODE ######################
@@ -469,18 +582,26 @@ class ankleTorqueControl:
             np.savetxt('joint_velocity_data', joint_velocity_data, delimiter=",", fmt='%.3f')
             np.savetxt('com_ext_force_data', com_ext_force_data, delimiter=",", fmt='%.3f')
             np.savetxt('perturbation_data', perturbation_data_array, delimiter="'",fmt="%.3f")
-            plot_columns(perturbation_data_array, "perturbation versus time")
-            plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
-            plot_columns(joint_velocity_data, "Joint Velocity")
-            plot_four_columns(joint_position_data, 
-                            goal_position_data, 
-                            joint_velocity_data, 
-                            control_log_array,
-                            "joint actual pos.",
-                            "joint goal pos.",
-                            "joint vel.",
-                            "control torque")
-
+            # plot_columns(perturbation_data_array, "perturbation versus time")
+            # # plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
+            # # plot_columns(joint_velocity_data, "Joint Velocity")
+            # plot_four_columns(joint_position_data, 
+            #                 goal_position_data, 
+            #                 joint_velocity_data, 
+            #                 control_log_array,
+            #                 "joint actual pos.",
+            #                 "joint goal pos.",
+            #                 "joint vel.",
+            #                 "control torque")
+            # plot_two_columns(control_log_array, gravity_torque_data, "Control Torque [Nm]", "Gravitational Torque [Nm]")
+            # plot_columns(gravity_torque_data, "Gravitational Torque [Nm]")
+            # plot_two_columns(human_torque_data, exo_torque_data, "Human Torque (Executed) [Nm]", "Exo Torque (Executed) [Nm]")
+            plot_three_columns( human_torque_data, 
+                                exo_torque_data, 
+                                ankle_torque_data, 
+                                "Human Torque (Executed) [Nm]", 
+                                "Exo Torque (Executed) [Nm]", 
+                                "Ankle Torque (Executed) [Nm]")
         ###########################################
         ###########################################
 
