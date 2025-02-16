@@ -1,3 +1,5 @@
+import xml.etree.ElementTree as ET
+
 # calculate mass, geometry, and controller gain data from literature equations
 def calculate_kp_and_geom(weight, height):
     
@@ -37,6 +39,7 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
                 # print(f'pos: {poo}')
                 body.set('pos',  f'0. 0 0') # this x,y,z position is w.r.t the global frame
                 body.set('quat', f'0 0 0 1') # unit quaternion for pi radians rotation about global z-axis
+
 
             elif body.get('name') == "long_link_body":
                 # size = float(body.get('size'))

@@ -3,7 +3,7 @@ from mujoco.glfw import glfw
 import numpy as np
 import os
 from typing import Callable, Optional, Union, List
-import scipy.linalg
+import scipy.linalg as linalg
 import mediapy as media
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -52,8 +52,8 @@ class ankleTorqueControl:
         self.K_p = 1
         self.pertcount = 0
         self.prev_error = 0  # 存储上一个时间步的误差
-        self.Kp_exo = 700
-        self.Kd_exo = 20
+        self.Kp_exo = 10
+        self.Kd_exo = 1
 
     # this function has to stay in this script per MuJoCo documentation
     def controller(self, model, data):
@@ -64,12 +64,12 @@ class ankleTorqueControl:
         """
         
         error = self.ankle_position_setpoint - data.sensordata[0]
-        # # GRAVITY COMPENSATION #
-        # # human_torque = self.K_p * error 
-        # # data.ctrl[0] = human_torque
-        # # print(data.ctrl[0])
+        # # # GRAVITY COMPENSATION #
+        # human_torque = self.K_p * error 
+        # data.ctrl[0] = human_torque
+        # print(data.ctrl[0])
         # # PD #
-        # Kp =5000
+        # Kp =800
         # Kd =10
         # delta_error = error - self.prev_error
         # delta_time = model.opt.timestep  # MuJoCo 仿真步长
@@ -78,46 +78,105 @@ class ankleTorqueControl:
         # data.ctrl[0] = human_torque
         # self.prev_error = error
 
-        ################## test MRTD ##########
-        # PD 控制计算 human torque
-        Kp = 500
-        Kd = 10
-        delta_error = error - self.prev_error
-        delta_time = model.opt.timestep
-        derivative = delta_error / delta_time
-        desired_torque = Kp * error + Kd * derivative
+        if not hasattr(self, 'K'):
+            # 系统参数
+            m = 80.0 - 2 * 0.0145 * 80.0  # 总质量(kg)
+            l = 0.575 * 1.78   # 到COM的距离(m)
+            g = 9.81  # 重力加速度(m/s^2)
+            b = 2.5   # 阻尼系数
+            I = m * l**2  # 转动惯量
+            
+            # 状态空间矩阵
+            # A = np.array([[0, 1],
+            #             [g/l, -b/(m*l**2)]])
+            # B = np.array([[0],
+            #             [1/(m*l**2)]])
+            A = np.array([[0, 1],
+                        [-m*g*l/I, -b/I]])
+            B = np.array([[0],
+                        [1/I]])
 
-        # 确保 prev_torque 初始化
-        if not hasattr(self, 'prev_torque'):
-            self.prev_torque = 0.0
-            self.prev_error = 0.0
+            
+            # LQR权重矩阵
+            Q = np.diag([5000, 100])  # 状态权重：角度误差权重大，角速度误差权重小
+            R = np.array([[0.01]])   # 控制输入权重
+            
+            # 求解连续时间黎卡提方程
+            P = linalg.solve_continuous_are(A, B, Q, R)
+            
+            # 计算LQR增益矩阵
+            # self.K = np.dot(np.linalg.inv(R), np.dot(B.T, P))
+            self.K = np.linalg.solve(R, B.T @ P)
 
-        prev_torque = self.prev_torque
-
-        # MRTD 约束（单位 Nm/s）
-        MRTD_df = 148/15  # Dorsiflexion（背屈）
-        MRTD_pf = 389/15  # Plantarflexion（跖屈）
-
-        # 计算 torque 变化量
-        delta_torque = desired_torque - prev_torque
-
-        # 施加 MRTD 约束
-        if delta_torque > 0:
-            max_increase = MRTD_df * delta_time
-            delta_torque = min(delta_torque, max_increase)
-        else:
-            max_decrease = -MRTD_pf * delta_time
-            delta_torque = max(delta_torque, max_decrease)
-
-        # 更新 human torque
-        human_torque = prev_torque + delta_torque
-
-        # 存储数据
-        self.prev_torque = human_torque
-        self.prev_error = error
-
-        # 施加到 MuJoCo 控制
+            
+            # 为了后续计算初始化上一时刻状态
+            self.prev_state = np.array([0.0, 0.0])
+            
+            print("LQR controller initialized with gains:", self.K)
+        
+        # 获取当前状态 [theta, theta_dot]
+        current_state = np.array([
+            data.sensordata[0],  # 踝关节角度
+            data.qvel[3]         # 踝关节角速度
+        ])
+        
+        # 计算误差状态
+        error_state = np.array([
+            current_state[0] - self.ankle_position_setpoint,  # 角度误差
+            current_state[1]                                  # 角速度
+        ])
+        
+        # 计算LQR控制输入
+        human_torque = -np.dot(self.K, error_state)
+        human_torque = float(human_torque[0])
+        
+        # 更新控制输入
         data.ctrl[0] = human_torque
+        
+        # 存储当前状态用于下一时刻计算
+        self.prev_state = current_state
+
+
+        # ################## test MRTD ##########
+        # PD 控制计算 human torque
+        # Kp = 500
+        # Kd = 20
+        # delta_error = error - self.prev_error
+        # delta_time = model.opt.timestep
+        # derivative = delta_error / delta_time
+        # desired_torque = Kp * error + Kd * derivative
+
+        # # 确保 prev_torque 初始化
+        # if not hasattr(self, 'prev_torque'):
+        #     self.prev_torque = 0.0
+        #     self.prev_error = 0.0
+
+        # prev_torque = self.prev_torque
+
+        # # MRTD 约束（单位 Nm/s）
+        # MRTD_df = 148/15  # Dorsiflexion（背屈）
+        # MRTD_pf = 389/15  # Plantarflexion（跖屈）
+
+        # # 计算 torque 变化量
+        # delta_torque = desired_torque - prev_torque
+
+        # # 施加 MRTD 约束
+        # if delta_torque > 0:
+        #     max_increase = MRTD_df * delta_time
+        #     delta_torque = min(delta_torque, max_increase)
+        # else:
+        #     max_decrease = -MRTD_pf * delta_time
+        #     delta_torque = max(delta_torque, max_decrease)
+
+        # # 更新 human torque
+        # human_torque = prev_torque + delta_torque
+
+        # # 存储数据
+        # self.prev_torque = human_torque
+        # self.prev_error = error
+
+        # # 施加到 MuJoCo 控制
+        # data.ctrl[0] = human_torque
 
         ##############################################
         
@@ -137,7 +196,8 @@ class ankleTorqueControl:
         exo_torque = self.Kp_exo * exo_error - self.Kd_exo * current_velocity
 
         # 施加外骨骼力矩
-        data.ctrl[1] = exo_torque
+        # data.ctrl[1] = exo_torque
+        data.ctrl[1] = 0
         # print(data.ctrl[1])
             
         # print("Timestep:", data.time)
@@ -196,7 +256,7 @@ class ankleTorqueControl:
             time.sleep(wait_time)
             
             # Generate a large impulse
-            perturbation = np.random.uniform(perturbation_magnitude, perturbation_magnitude+0)
+            perturbation = np.random.uniform(perturbation_magnitude, perturbation_magnitude)
 
             # this will generate either -1 or 1
             direction_bool = np.random.choice([-1,1])
@@ -303,7 +363,7 @@ class ankleTorqueControl:
 
         # Init GLFW, create window, make OpenGL context current, request v-sync
         glfw.init()
-        window = glfw.create_window(1200, 900, "Demo", None, None)
+        window = glfw.create_window(1200, 912, "Demo", None, None) # Modify the video size to solve the warning
         glfw.make_context_current(window)
         glfw.swap_interval(1)
 
@@ -330,13 +390,15 @@ class ankleTorqueControl:
         # grav_tuple = tuple(map(float, gravity_string.split(', ')))
         model.opt.gravity = np.array([0, 0, params['config']['gravity']])
         # tweak map parameters for visualization
-        model.vis.map.force = 0.1 # scaling parameter for force vector's length
+        model.vis.map.force = 0.25 # scaling parameter for force vector's length
         model.vis.map.torque = 0.1 # scaling parameter for control torque
 
         # tweak scales of contact visualization elements
         model.vis.scale.contactwidth = 0.05 # width of the floor contact point
         model.vis.scale.contactheight = 0.01 # height of the floor contact point
         model.vis.scale.forcewidth = 0.03 # width of the force vector
+
+
         model.vis.scale.com = 0.2 # com radius
         model.vis.scale.actuatorwidth = 0.1 # diameter of visualized actuator
         model.vis.scale.actuatorlength = 0.1 # thickness of visualized actuator
@@ -556,7 +618,6 @@ class ankleTorqueControl:
             imageio.mimwrite(video_file, frames, fps=video_fps)
         print('terminated')
         glfw.terminate()
-
         np.savetxt('joint_position_data', joint_position_data, delimiter=",", fmt='%.3f')
         np.savetxt('joint_velocity_data', joint_velocity_data, delimiter=",", fmt='%.3f')
         np.savetxt('constraint_frc_data', constraint_frc_data, delimiter=',', fmt='%.3f')
@@ -583,8 +644,8 @@ class ankleTorqueControl:
             np.savetxt('com_ext_force_data', com_ext_force_data, delimiter=",", fmt='%.3f')
             np.savetxt('perturbation_data', perturbation_data_array, delimiter="'",fmt="%.3f")
             # plot_columns(perturbation_data_array, "perturbation versus time")
-            # # plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
-            # # plot_columns(joint_velocity_data, "Joint Velocity")
+            plot_two_columns(joint_position_data, goal_position_data, "Actual Position", "Goal Position")
+            plot_columns(joint_velocity_data, "Joint Velocity")
             # plot_four_columns(joint_position_data, 
             #                 goal_position_data, 
             #                 joint_velocity_data, 
@@ -595,6 +656,7 @@ class ankleTorqueControl:
             #                 "control torque")
             # plot_two_columns(control_log_array, gravity_torque_data, "Control Torque [Nm]", "Gravitational Torque [Nm]")
             # plot_columns(gravity_torque_data, "Gravitational Torque [Nm]")
+            # plot_columns(exo_torque_data, "Exo Torque (Executed) [Nm]")
             # plot_two_columns(human_torque_data, exo_torque_data, "Human Torque (Executed) [Nm]", "Exo Torque (Executed) [Nm]")
             plot_three_columns( human_torque_data, 
                                 exo_torque_data, 
@@ -602,6 +664,14 @@ class ankleTorqueControl:
                                 "Human Torque (Executed) [Nm]", 
                                 "Exo Torque (Executed) [Nm]", 
                                 "Ankle Torque (Executed) [Nm]")
+            # plot_four_columns (human_torque_data, 
+            #                     exo_torque_data, 
+            #                     ankle_torque_data,
+            #                     gravity_torque_data, 
+            #                     "Human Torque (Executed) [Nm]", 
+            #                     "Exo Torque (Executed) [Nm]", 
+            #                     "Ankle Torque (Executed) [Nm]",
+            #                     "Gravitational Torque [Nm]") 
         ###########################################
         ###########################################
 
