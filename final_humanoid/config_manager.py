@@ -90,90 +90,93 @@ class ConfigManager:
     """Configuration manager for the simulation"""
     
     def __init__(self, config_path: str):
-        """Initialize configuration manager
+        """
+        Initialize configuration manager.
         
         Args:
-            config_path: Path to the YAML configuration file
+            config_path: Path to the YAML configuration file.
         """
         self.config_path = config_path
         self._load_config()
         
     def _load_config(self):
-        """Load configuration from YAML file"""
-        with open(self.config_path, 'r') as file:
-            config = yaml.safe_load(file)['config']
-            
-        # Create configuration objects
+        """Load configuration from YAML file and construct config objects."""
+        with open(self.config_path, 'r', encoding='utf-8') as file:
+            config_yaml = yaml.safe_load(file)
+        
+        if 'config' not in config_yaml:
+            raise KeyError("Missing top-level 'config' key in configuration file.")
+        config = config_yaml['config']
+        
+        # Helper to ensure required keys are present
+        def require(key: str):
+            if key not in config:
+                raise KeyError(f"Missing required configuration key: '{key}'")
+            return config[key]
+        
         self.simulation = SimulationConfig(
-            simend=config['simend'],
-            simulation_timestep=config['simulation_timestep'],
-            gravity=config['gravity'],
-            xml_path=config['xml_path'],
-            lit_xml_file=config['lit_xml_file'],
-            translation_friction_constant=config['translation_friction_constant'],
-            rolling_friction_constant=config['rolling_friction_constant']
+            simend=require('simend'),
+            simulation_timestep=require('simulation_timestep'),
+            gravity=require('gravity'),
+            xml_path=require('xml_path'),
+            lit_xml_file=require('lit_xml_file'),
+            translation_friction_constant=require('translation_friction_constant'),
+            rolling_friction_constant=require('rolling_friction_constant')
         )
         
         self.model = ModelConfig(
-            M_total=config['M_total'],
-            H_total=config['H_total'],
-            ankle_position_setpoint_radians=config['ankle_position_setpoint_radians'],
-            ankle_initial_position_radians=config['ankle_initial_position_radians'],
-            foot_angle_initial_position_radians=config['foot_angle_initial_position_radians']
+            M_total=require('M_total'),
+            H_total=require('H_total'),
+            ankle_position_setpoint_radians=require('ankle_position_setpoint_radians'),
+            ankle_initial_position_radians=require('ankle_initial_position_radians'),
+            foot_angle_initial_position_radians=require('foot_angle_initial_position_radians')
         )
         
-        # Load human controller configuration
-        human_ctrl = config['human_controller']
+        human_ctrl = config.get('human_controller', {})
         self.human_controller = HumanControllerConfig(
-            type=human_ctrl['type'],
-            gravity_compensation=GravityCompensationParams(**human_ctrl['gravity_compensation']) 
+            type=human_ctrl.get('type', 'none'),
+            gravity_compensation=GravityCompensationParams(**human_ctrl['gravity_compensation'])
                 if human_ctrl.get('gravity_compensation') else None,
-            pd=PDParams(**human_ctrl['pd']) 
+            pd=PDParams(**human_ctrl['pd'])
                 if human_ctrl.get('pd') else None,
-            lqr=LQRParams(**human_ctrl['lqr']) 
+            lqr=LQRParams(**human_ctrl['lqr'])
                 if human_ctrl.get('lqr') else None
         )
         
-        # Load exoskeleton controller configuration
-        exo_ctrl = config['exo_controller']
+        exo_ctrl = config.get('exo_controller', {})
         self.exo_controller = ExoControllerConfig(
-            type=exo_ctrl['type'],
-            pd=PDParams(**exo_ctrl['pd']) 
+            type=exo_ctrl.get('type', 'none'),
+            pd=PDParams(**exo_ctrl['pd'])
                 if exo_ctrl.get('pd') else None
         )
         
-        # Load MRTD configuration
-        self.mrtd = MRTDConfig(**config['mrtd'])
+        self.mrtd = MRTDConfig(**config.get('mrtd'))
         
         self.perturbation = PerturbationConfig(
-            apply_perturbation=config['apply_perturbation'],
-            perturbation_time=config['perturbation_time'],
-            perturbation_magnitude=config['perturbation_magnitude'],
-            perturbation_period=config['perturbation_period']
+            apply_perturbation=require('apply_perturbation'),
+            perturbation_time=require('perturbation_time'),
+            perturbation_magnitude=require('perturbation_magnitude'),
+            perturbation_period=require('perturbation_period')
         )
         
         self.visualization = VisualizationConfig(
-            plotter_flag=config['plotter_flag'],
-            mp4_flag=config['mp4_flag'],
-            mp4_file_name=config['mp4_file_name'],
-            mp4_fps=config['mp4_fps'],
-            camera_azimuth=config['camera_azimuth'],
-            camera_distance=config['camera_distance'],
-            camera_elevation=config['camera_elevation'],
-            camera_lookat_xyz=config['camera_lookat_xyz'],
-            visualize_contact_force=config['visualize_contact_force'],
-            visualize_perturbation_force=config['visualize_perturbation_force'],
-            visualize_joints=config['visualize_joints'],
-            visualize_actuators=config['visualize_actuators'],
-            visualize_center_of_mass=config['visualize_center_of_mass']
+            plotter_flag=require('plotter_flag'),
+            mp4_flag=require('mp4_flag'),
+            mp4_file_name=require('mp4_file_name'),
+            mp4_fps=require('mp4_fps'),
+            camera_azimuth=require('camera_azimuth'),
+            camera_distance=require('camera_distance'),
+            camera_elevation=require('camera_elevation'),
+            camera_lookat_xyz=require('camera_lookat_xyz'),
+            visualize_contact_force=require('visualize_contact_force'),
+            visualize_perturbation_force=require('visualize_perturbation_force'),
+            visualize_joints=require('visualize_joints'),
+            visualize_actuators=require('visualize_actuators'),
+            visualize_center_of_mass=require('visualize_center_of_mass')
         )
     
     def get_all_configs(self):
-        """Get all configuration objects
-        
-        Returns:
-            Tuple of all configuration objects
-        """
+        """Return all configuration objects as a tuple."""
         return (
             self.simulation,
             self.model,

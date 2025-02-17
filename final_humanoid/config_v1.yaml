@@ -1,60 +1,61 @@
 config:
-  perturbation_time: 0.3                                # set the pulse width of the perturbation
-  perturbation_magnitude: 100                           # set the magnitude of the quasi-impulse 
-  perturbation_period: 3.25                             # set the period (1/frequency) of the impulse
-  apply_perturbation: false                             # toggle this on/off to select whether the perturbation is applied or not
-  ankle_position_setpoint_radians: 0.0872665         # set the ankle joint setpoint in radians
-  ankle_initial_position_radians:  0.08726             # set the initial ankle angle in radians
-  foot_angle_initial_position_radians: 0                # set the initial angle of the foot
-  simend: 15                                           # set the duration for which the simulation will run
-  M_total: 80                                           # total mass of the human
-  H_total: 1.78                                         # total height of the human
-  mp4_file_name: 'pert_with_contact_force_vis.mp4'      # file name for mp4 file to be saved to
-  mp4_fps: 60                                           # video fps
-  mp4_flag: false                                      # toggle mp4 recording
-  
-  # Human Controller Configuration
+  perturbation_time: 0.3                                # 设置扰动脉冲宽度
+  perturbation_magnitude: 100                           # 设置扰动幅值
+  perturbation_period: 3.25                             # 设置扰动周期（1/频率）
+  apply_perturbation: false                             # 是否启用扰动
+
+  ankle_position_setpoint_radians: 0.0872665           # 踝关节目标角度（弧度）
+  ankle_initial_position_radians: 0.0872665            # 初始踝关节角度（弧度）
+  foot_angle_initial_position_radians: 0               # 初始足部角度（弧度）
+
+  simend: 15                                           # 仿真运行时长（秒）
+  M_total: 80                                          # 人体总质量（kg）
+  H_total: 1.78                                        # 人体身高（m）
+
+  mp4_file_name: 'pert_with_contact_force_vis.mp4'     # 录制视频的文件名
+  mp4_fps: 60                                          # 视频帧率
+  mp4_flag: false                                      # 是否启用视频录制
+
+  # 人类控制器配置
   human_controller:
-    type: "gravity_compensation"   # Options: "gravity_compensation", "pd", "lqr", "none"
-    # Gravity Compensation Parameters
+    type: "lqr"                       # 控制策略选项："gravity_compensation", "pd", "lqr", "none"
     gravity_compensation:
-      Kp: 500
-    # PD Control Parameters
+      Kp: 50                                          # 重力补偿控制增益
     pd:
-      Kp: 500
-      Kd: 20
-    # LQR Parameters
+      Kp: 100                                          # PD控制比例增益
+      Kd: 20                                           # PD控制微分增益
     lqr:
-      Q_angle: 5000    # State cost for angle
-      Q_velocity: 100  # State cost for velocity
-      R: 0.01         # Control cost
-  
-  # Exoskeleton Controller Configuration
+      Q_angle: 5000                                    # LQR状态角度权重
+      Q_velocity: 100                                  # LQR状态角速度权重
+      R: 0.01                                          # LQR控制输入权重
+
+  # 外骨骼控制器配置
   exo_controller:
-    type: "pd"    # Options: "pd", "none"
+    type: "none"                                         # 外骨骼控制策略选项："pd", "none"
     pd:
-      Kp: 10
-      Kd: 1
-  
-  # MRTD Configuration
+      Kp: 10                                           # 外骨骼PD控制比例增益
+      Kd: 1                                            # 外骨骼PD控制微分增益
+
+  # MRTD（最大扭矩变化率）配置
   mrtd:
-    enable: false    # Toggle MRTD constraints
-    dorsiflexion: 148   # Maximum Rate of Torque Development for dorsiflexion (Nm/s)
-    plantarflexion: 389  # Maximum Rate of Torque Development for plantarflexion (Nm/s)
-  
-  translation_friction_constant: 0.99                   # set the translationl friction constant for model geoms
-  rolling_friction_constant: 0.99                       # set the rolling friction constant for model geoms
-  xml_path: 'initial_humanoid.xml'                      # set the file path that run_sim.py will read and modify
-  lit_xml_file: 'literature_humanoid.xml'               # set file path for literature estimate XML file
-  plotter_flag: false                                 # toggle plotting on/off
-  simulation_timestep: 0.0005                          # set the simulation timestep
-  gravity: -9.81                                        # set gravity value
-  visualize_contact_force: false                         # toggle contact force visualization
-  visualize_perturbation_force: false                    # toggle perturbation force visualization
-  visualize_joints: false                               # toggle joint visualization
-  visualize_actuators: false                             # toggle actuator visualization
-  visualize_center_of_mass: false                       # toggle COM visualization
-  camera_azimuth: 87.5                                  # set camera azimuth
-  camera_distance: 3.                                   # set camera distance
-  camera_elevation: -5                                  # set camera elevation
-  camera_lookat_xyz: '0.012768, -0.000000, 1' 
+    enable: false                                      # 是否启用 MRTD 限制
+    dorsiflexion: 9.87                                 # 背屈方向最大扭矩变化率（Nm/s，约等于148/15）
+    plantarflexion: 25.93                              # 跖屈方向最大扭矩变化率（Nm/s，约等于389/15）
+
+  translation_friction_constant: 0.99                  # 平移摩擦系数
+  rolling_friction_constant: 0.99                      # 滚动摩擦系数
+  xml_path: 'initial_humanoid.xml'                     # 初始XML模型文件路径
+  lit_xml_file: 'literature_humanoid.xml'              # 修改后生成的XML模型文件路径
+  plotter_flag: false                                  # 是否启用绘图
+  simulation_timestep: 0.0005                          # 仿真步长
+  gravity: -9.81                                       # 重力值（沿z轴）
+  visualize_contact_force: false                     # 是否可视化接触力
+  visualize_perturbation_force: false                # 是否可视化扰动力
+  visualize_joints: false                            # 是否可视化关节
+  visualize_actuators: false                          # 是否可视化执行器
+  visualize_center_of_mass: false                    # 是否可视化质心
+
+  camera_azimuth: 87.5                                 # 摄像机方位角
+  camera_distance: 3.0                                 # 摄像机距离
+  camera_elevation: -5                                 # 摄像机仰角
+  camera_lookat_xyz: '0.012768, -0.000000, 1'          # 摄像机观察点（x,y,z）
