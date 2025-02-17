@@ -1,0 +1,60 @@
+config:
+  perturbation_time: 0.3                                # set the pulse width of the perturbation
+  perturbation_magnitude: 100                           # set the magnitude of the quasi-impulse 
+  perturbation_period: 3.25                             # set the period (1/frequency) of the impulse
+  apply_perturbation: false                             # toggle this on/off to select whether the perturbation is applied or not
+  ankle_position_setpoint_radians: 0.0872665         # set the ankle joint setpoint in radians
+  ankle_initial_position_radians:  0.08726             # set the initial ankle angle in radians
+  foot_angle_initial_position_radians: 0                # set the initial angle of the foot
+  simend: 15                                           # set the duration for which the simulation will run
+  M_total: 80                                           # total mass of the human
+  H_total: 1.78                                         # total height of the human
+  mp4_file_name: 'pert_with_contact_force_vis.mp4'      # file name for mp4 file to be saved to
+  mp4_fps: 60                                           # video fps
+  mp4_flag: false                                      # toggle mp4 recording
+  
+  # Human Controller Configuration
+  human_controller:
+    type: "gravity_compensation"   # Options: "gravity_compensation", "pd", "lqr", "none"
+    # Gravity Compensation Parameters
+    gravity_compensation:
+      Kp: 500
+    # PD Control Parameters
+    pd:
+      Kp: 500
+      Kd: 20
+    # LQR Parameters
+    lqr:
+      Q_angle: 5000    # State cost for angle
+      Q_velocity: 100  # State cost for velocity
+      R: 0.01         # Control cost
+  
+  # Exoskeleton Controller Configuration
+  exo_controller:
+    type: "pd"    # Options: "pd", "none"
+    pd:
+      Kp: 10
+      Kd: 1
+  
+  # MRTD Configuration
+  mrtd:
+    enable: false    # Toggle MRTD constraints
+    dorsiflexion: 148   # Maximum Rate of Torque Development for dorsiflexion (Nm/s)
+    plantarflexion: 389  # Maximum Rate of Torque Development for plantarflexion (Nm/s)
+  
+  translation_friction_constant: 0.99                   # set the translationl friction constant for model geoms
+  rolling_friction_constant: 0.99                       # set the rolling friction constant for model geoms
+  xml_path: 'initial_humanoid.xml'                      # set the file path that run_sim.py will read and modify
+  lit_xml_file: 'literature_humanoid.xml'               # set file path for literature estimate XML file
+  plotter_flag: false                                 # toggle plotting on/off
+  simulation_timestep: 0.0005                          # set the simulation timestep
+  gravity: -9.81                                        # set gravity value
+  visualize_contact_force: false                         # toggle contact force visualization
+  visualize_perturbation_force: false                    # toggle perturbation force visualization
+  visualize_joints: false                               # toggle joint visualization
+  visualize_actuators: false                             # toggle actuator visualization
+  visualize_center_of_mass: false                       # toggle COM visualization
+  camera_azimuth: 87.5                                  # set camera azimuth
+  camera_distance: 3.                                   # set camera distance
+  camera_elevation: -5                                  # set camera elevation
+  camera_lookat_xyz: '0.012768, -0.000000, 1' 
