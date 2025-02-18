@@ -51,7 +51,7 @@ class ankleTorqueControl:
         self.mp4_flag = False
         self.K_p = 1
         self.pertcount = 0
-        self.prev_error = 0  # 存储上一个时间步的误差
+        self.prev_error = 0  # Store the error of the previous time step
         self.Kp_exo = 10
         self.Kd_exo = 1
 
@@ -72,21 +72,21 @@ class ankleTorqueControl:
         # Kp =800
         # Kd =10
         # delta_error = error - self.prev_error
-        # delta_time = model.opt.timestep  # MuJoCo 仿真步长
-        # derivative = delta_error / delta_time  # 计算微分项
+        # delta_time = model.opt.timestep  # MuJoCo Simulation step
+        # derivative = delta_error / delta_time  
         # human_torque = Kp * error + Kd * derivative
         # data.ctrl[0] = human_torque
         # self.prev_error = error
 
         if not hasattr(self, 'K'):
-            # 系统参数
-            m = 80.0 - 2 * 0.0145 * 80.0  # 总质量(kg)
-            l = 0.575 * 1.78   # 到COM的距离(m)
-            g = 9.81  # 重力加速度(m/s^2)
-            b = 2.5   # 阻尼系数
-            I = m * l**2  # 转动惯量
+            # parameters
+            m = 80.0 - 2 * 0.0145 * 80.0  
+            l = 0.575 * 1.78   # Distance to COM(m)
+            g = 9.81  
+            b = 2.5   # Damping coefficient
+            I = m * l**2  # Inertia
             
-            # 状态空间矩阵
+            # State Matrix
             # A = np.array([[0, 1],
             #             [g/l, -b/(m*l**2)]])
             # B = np.array([[0],
@@ -97,48 +97,47 @@ class ankleTorqueControl:
                         [1/I]])
 
             
-            # LQR权重矩阵
-            Q = np.diag([5000, 100])  # 状态权重：角度误差权重大，角速度误差权重小
-            R = np.array([[0.01]])   # 控制输入权重
+            # LQR Weight Matrix
+            Q = np.diag([5000, 100])  
+            R = np.array([[0.01]])   
             
-            # 求解连续时间黎卡提方程
+            # Solve the continuous-time Riccati equation
             P = linalg.solve_continuous_are(A, B, Q, R)
             
-            # 计算LQR增益矩阵
+            # Calculate the LQR gain matrix
             # self.K = np.dot(np.linalg.inv(R), np.dot(B.T, P))
             self.K = np.linalg.solve(R, B.T @ P)
 
             
-            # 为了后续计算初始化上一时刻状态
+            # Initialize the previous state for subsequent calculations
             self.prev_state = np.array([0.0, 0.0])
             
             print("LQR controller initialized with gains:", self.K)
         
-        # 获取当前状态 [theta, theta_dot]
         current_state = np.array([
-            data.sensordata[0],  # 踝关节角度
-            data.qvel[3]         # 踝关节角速度
+            data.sensordata[0],  # angle
+            data.qvel[3]         # angle velocity
         ])
         
-        # 计算误差状态
+       
         error_state = np.array([
-            current_state[0] - self.ankle_position_setpoint,  # 角度误差
-            current_state[1]                                  # 角速度
+            current_state[0] - self.ankle_position_setpoint,  
+            current_state[1]                                  
         ])
         
-        # 计算LQR控制输入
+        # Calculate LQR control input
         human_torque = -np.dot(self.K, error_state)
         human_torque = float(human_torque[0])
         
-        # 更新控制输入
+        # Update control input
         data.ctrl[0] = human_torque
         
-        # 存储当前状态用于下一时刻计算
+        # Store the current state for calculation at the next moment
         self.prev_state = current_state
 
 
         # ################## test MRTD ##########
-        # PD 控制计算 human torque
+        # PD Control Computation for Human Torque
         # Kp = 500
         # Kd = 20
         # delta_error = error - self.prev_error
@@ -146,21 +145,21 @@ class ankleTorqueControl:
         # derivative = delta_error / delta_time
         # desired_torque = Kp * error + Kd * derivative
 
-        # # 确保 prev_torque 初始化
+        # # Ensure prev_torque is initialized
         # if not hasattr(self, 'prev_torque'):
         #     self.prev_torque = 0.0
         #     self.prev_error = 0.0
 
         # prev_torque = self.prev_torque
 
-        # # MRTD 约束（单位 Nm/s）
-        # MRTD_df = 148/15  # Dorsiflexion（背屈）
-        # MRTD_pf = 389/15  # Plantarflexion（跖屈）
+        # # MRTD Constraints (unit: Nm/s)
+        # MRTD_df = 148/15  # Dorsiflexion
+        # MRTD_pf = 389/15  # Plantarflexion
 
-        # # 计算 torque 变化量
+        # # Calculate torque change
         # delta_torque = desired_torque - prev_torque
 
-        # # 施加 MRTD 约束
+        # # Apply MRTD constraints
         # if delta_torque > 0:
         #     max_increase = MRTD_df * delta_time
         #     delta_torque = min(delta_torque, max_increase)
@@ -168,44 +167,44 @@ class ankleTorqueControl:
         #     max_decrease = -MRTD_pf * delta_time
         #     delta_torque = max(delta_torque, max_decrease)
 
-        # # 更新 human torque
+        # # Update human torque
         # human_torque = prev_torque + delta_torque
 
-        # # 存储数据
+        # # Store data
         # self.prev_torque = human_torque
         # self.prev_error = error
 
-        # # 施加到 MuJoCo 控制
+        # # Apply to MuJoCo control
         # data.ctrl[0] = human_torque
 
         ##############################################
         
 
-        # k_exo = 0.5  # 读取 config 里的补偿系数
-        # exo_torque = - k_exo * data.qfrc_bias[3]  # 计算外骨骼力矩
+        # k_exo = 0.5  # Read compensation coefficient from config
+        # exo_torque = - k_exo * data.qfrc_bias[3]  # Calculate exoskeleton torque
         # data.ctrl[1] = exo_torque
 
-        # 计算外骨骼力矩
-        # 计算外骨骼的 PD 控制
-        # 获取当前踝关节角度和角速度
-        current_angle = data.qpos[3]   # 踝关节当前角度
-        current_velocity = data.qvel[3]  # 踝关节当前角速度
+        # Calculate exoskeleton torque
+        # Calculate exoskeleton PD control
+        # Get current ankle joint angle and angular velocity
+        current_angle = data.qpos[3]   # Current ankle joint angle
+        current_velocity = data.qvel[3]  # Current ankle joint angular velocity
 
-        # PD 控制计算
-        exo_error = self.ankle_position_setpoint - current_angle  # 角度误差
+        # PD control
+        exo_error = self.ankle_position_setpoint - current_angle  # Angle error
         exo_torque = self.Kp_exo * exo_error - self.Kd_exo * current_velocity
 
-        # 施加外骨骼力矩
+        
         # data.ctrl[1] = exo_torque
         data.ctrl[1] = 0
         # print(data.ctrl[1])
             
         # print("Timestep:", data.time)
-        # print("Control torque:", data.ctrl[0]*15 + data.ctrl[1]*5)  # 控制器指定的总力矩
-        # print("Actual joint torque:", data.qfrc_actuator[3])        # 实际执行的关节力矩
-        # print("Passive damping:", data.qfrc_passive[3])             # 被动阻尼力矩
-        # print("Constraint force:", data.qfrc_constraint[3])         # 约束力产生的力矩
-        # # print("Contact force:", data.qfrc_contact[3])               # 接触力产生的力矩
+        # print("Control torque:", data.ctrl[0]*15 + data.ctrl[1]*5)  
+        # print("Actual joint torque:", data.qfrc_actuator[3])        
+        # print("Passive damping:", data.qfrc_passive[3])             
+        # print("Constraint force:", data.qfrc_constraint[3])         
+        # # print("Contact force:", data.qfrc_contact[3])               
         # Log the actuator torque and timestep to an array for later use
         # control_torque_time_array = np.array([data.time, human_torque])
         # control_log_queue.put(control_torque_time_array)
@@ -308,7 +307,7 @@ class ankleTorqueControl:
         constraint_frc_data = np.empty((1,5))
         contact_force_sensor = np.empty((1,3))
 
-        gravity_torque_data = np.empty((1,2))  # 修改这里
+        gravity_torque_data = np.empty((1,2))  
         
         params = self.load_params_from_yaml('config.yaml')
 
@@ -527,21 +526,21 @@ class ankleTorqueControl:
                     perturbation_data_array = np.vstack((perturbation_data_array, np.array([data.time, 0.]) ))
 
                 mj.mj_step(model, data)
-                # input_torque = data.ctrl[0]   # 期望控制输入
-                # actuator_torque = data.qfrc_actuator[3]  # 执行器的实际力矩
+                # input_torque = data.ctrl[0]   
+                # actuator_torque = data.qfrc_actuator[3]  # Actual torque of the actuator
                 # print(f"Time: {data.time:.3f}, Input Torque: {input_torque:.4f}, Actuator Torque: {actuator_torque:.4f}")
                 gravity_torque = data.qfrc_bias[3] 
-                gravity_torque_data = np.vstack((gravity_torque_data, np.array([data.time, gravity_torque])))  # 修改这里
+                gravity_torque_data = np.vstack((gravity_torque_data, np.array([data.time, gravity_torque])))  
                 # collect data from the control log if it isn't empty, this is used in the PD control mode
                 # print(f'actuator force: {data.qfrc_actuator[3]}')
                 control_log_array = np.vstack((control_log_array, np.array([data.time,data.qfrc_actuator[3]]) ))
                 
                 # collect data from perturbation for now perturbation is 1D so we have (n,2) array of pert. data
                 # print("Timestep:", data.time)
-                # print("human torque:", data.ctrl[0]*15)  # 控制器指定的总力矩
-                # print("Actual joint torque:", data.qfrc_actuator[3])        # 实际执行的关节力矩
-                # print("Passive damping:", data.qfrc_passive[3])             # 被动阻尼力矩
-                # print("Constraint force:", data.qfrc_constraint[3])         # 约束力产生的力矩
+                # print("human torque:", data.ctrl[0]*15)  
+                # print("Actual joint torque:", data.qfrc_actuator[3])        
+                # print("Passive damping:", data.qfrc_passive[3])             
+                # print("Constraint force:", data.qfrc_constraint[3])         
                     
                 # human_torque_executed = 15 * data.ctrl[0]
                 # exo_torque_executed = 5 * data.ctrl[1]
