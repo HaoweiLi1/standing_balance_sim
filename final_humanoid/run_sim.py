@@ -52,8 +52,38 @@ class ankleTorqueControl:
         self.K_p = 1
         self.pertcount = 0
         self.prev_error = 0  # Store the error of the previous time step
-        self.Kp_exo = 10
-        self.Kd_exo = 1
+        self.Kp_exo = 500
+        self.Kd_exo = 10
+
+    def _update_exo_visibility(self, model, visible):
+        """
+        Helper method to toggle exoskeleton visibility
+        
+        Args:
+            model: MuJoCo model
+            visible: Boolean indicating whether exo should be visible
+        """
+        # List of exoskeleton geom names
+        exo_geoms = [
+            "exo_footplate",
+            "exo_joint_center",
+            "exo_motor_housing",
+            "exo_strut_right",
+            "exo_strut_left",
+            "exo_calf_band"
+        ]
+        
+        # Set alpha value based on visibility
+        alpha = 1.0 if visible else 0.0
+        
+        # Update alpha (transparency) for all exo components
+        for geom_name in exo_geoms:
+            geom_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_GEOM, geom_name)
+            if geom_id >= 0:  # Valid ID
+                # Get current RGBA and update only alpha component
+                rgba = model.geom_rgba[geom_id].copy()
+                rgba[3] = alpha
+                model.geom_rgba[geom_id] = rgba
 
     # this function has to stay in this script per MuJoCo documentation
     def controller(self, model, data):
@@ -98,7 +128,7 @@ class ankleTorqueControl:
 
             
             # LQR Weight Matrix
-            Q = np.diag([5000, 100])  
+            Q = np.diag([3000, 100])  
             R = np.array([[0.01]])   
             
             # Solve the continuous-time Riccati equation
@@ -187,16 +217,35 @@ class ankleTorqueControl:
         # Calculate exoskeleton torque
         # Calculate exoskeleton PD control
         # Get current ankle joint angle and angular velocity
-        current_angle = data.qpos[3]   # Current ankle joint angle
-        current_velocity = data.qvel[3]  # Current ankle joint angular velocity
+        # current_angle = data.qpos[3]   # Current ankle joint angle
+        # current_velocity = data.qvel[3]  # Current ankle joint angular velocity
 
-        # PD control
-        exo_error = self.ankle_position_setpoint - current_angle  # Angle error
-        exo_torque = self.Kp_exo * exo_error - self.Kd_exo * current_velocity
-
+        # # PD control
+        # exo_error = self.ankle_position_setpoint - current_angle  # Angle error
+        # exo_torque = self.Kp_exo * exo_error - self.Kd_exo * current_velocity
+        use_exo = False  # You can change this flag based on your application needs
+    
+        if use_exo:
+            # Calculate exoskeleton's PD control
+            current_angle = data.qpos[3]   # Current ankle angle
+            current_velocity = data.qvel[3]  # Current ankle velocity
+            
+            # PD control calculation
+            exo_error = self.ankle_position_setpoint - current_angle  # Angle error
+            exo_torque = self.Kp_exo * exo_error - self.Kd_exo * current_velocity
+            
+            # Toggle exoskeleton visibility - set alpha based on torque
+            self._update_exo_visibility(model, True)
+        else:
+            exo_torque = 0
+            # Make exoskeleton invisible when not in use
+            self._update_exo_visibility(model, False)
+        
+        # Apply exoskeleton torque
+        data.ctrl[1] = exo_torque
         
         # data.ctrl[1] = exo_torque
-        data.ctrl[1] = 0
+        # data.ctrl[1] = 0
         # print(data.ctrl[1])
             
         # print("Timestep:", data.time)
@@ -422,7 +471,7 @@ class ankleTorqueControl:
         cam.elevation = params['config']['camera_elevation']
 
         lookat_string_xyz = params['config']['camera_lookat_xyz']
-        print(f'lookat string: {lookat_string_xyz}')
+        # print(f'lookat string: {lookat_string_xyz}')
         # print(lookat_string_xyz)
         # do some stuff to take a comma separated string and convert it to a tuple
         res = tuple(map(float, lookat_string_xyz.split(', ')))
