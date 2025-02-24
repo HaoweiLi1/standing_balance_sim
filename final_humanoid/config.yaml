@@ -29,3 +29,38 @@ config:
   camera_distance: 3.                                   # set camera distance from worldbody origin
   camera_elevation: -5                                  # set camera elevation from worldbody origin; not sure why it's negative (pretend it is positive)
   camera_lookat_xyz: '0.012768, -0.000000, 1'           # configure the (x,y,z) coordinates that the camera looks at in simulation
+
+
+
+  # New controller configuration section
+  controllers:
+    human:
+      type: "LQR"  # Options: "LQR", "PD"
+      max_torque_df: 43    # Maximum dorsiflexion torque (Nm)
+      max_torque_pf: -181  # Maximum plantarflexion torque (Nm)
+      mrtd_df: 309        # Maximum rate of torque development for dorsiflexion (Nm/s)
+      mrtd_pf: 957        # Maximum rate of torque development for plantarflexion (Nm/s)
+      
+      # LQR specific parameters
+      lqr_params:
+        Q_angle: 500     # State cost for angle
+        Q_velocity: 100   # State cost for velocity
+        R: 0.01          # Control cost
+      
+      # PD specific parameters
+      pd_params:
+        kp: 800          # Proportional gain
+        kd: 10           # Derivative gain
+    
+    exo:
+      type: "PD"         # Options: "PD", "GC" (Gravity Compensation)
+      max_torque: 50     # Maximum exo torque (Nm)
+      
+      # PD specific parameters
+      pd_params:
+        kp: 300           # Proportional gain
+        kd: 10            # Derivative gain
+      
+      # Gravity compensation specific parameters
+      gc_params:
+        compensation_factor: 0.5  # Gravity compensation ratio

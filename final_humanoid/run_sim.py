@@ -22,6 +22,9 @@ from plotting_utilities import plot_3d_pose_trajectory, \
                                plot_three_columns
 
 from xml_utilities import calculate_kp_and_geom, set_geometry_params
+from controllers import (HumanLQRController, HumanPDController, 
+                       ExoPDController, ExoGravityCompensation)
+
 
 plt.rcParams['text.usetex'] = True
 # plt.rcParams.update({
@@ -51,194 +54,269 @@ class ankleTorqueControl:
         self.mp4_flag = False
         self.K_p = 1
         self.pertcount = 0
-        self.prev_error = 0  # 存储上一个时间步的误差
-        self.Kp_exo = 10
-        self.Kd_exo = 1
+        # self.prev_error = 0  # 存储上一个时间步的误差
+        # self.Kp_exo = 10
+        # self.Kd_exo = 1
+        self.human_controller = None
+        self.exo_controller = None
 
-    # this function has to stay in this script per MuJoCo documentation
+    def initialize_controllers(self, model, data, config):
+        """Initialize controllers based on configuration."""
+        # Get human controller configuration
+        human_config = config['controllers']['human']
+        if human_config['type'] == "LQR":
+            lqr_params = human_config['lqr_params']
+            Q = np.diag([lqr_params['Q_angle'], lqr_params['Q_velocity']])
+            R = np.array([[lqr_params['R']]])
+            
+            self.human_controller = HumanLQRController(
+                model=model,
+                data=data,
+                max_torque_df=human_config['max_torque_df'],
+                max_torque_pf=human_config['max_torque_pf'],
+                mass=config['M_total'],
+                leg_length=0.575 * config['H_total'],
+                Q=Q,
+                R=R
+            )
+        elif human_config['type'] == "PD":
+            pd_params = human_config['pd_params']
+            self.human_controller = HumanPDController(
+                model=model,
+                data=data,
+                max_torque_df=human_config['max_torque_df'],
+                max_torque_pf=human_config['max_torque_pf'],
+                kp=pd_params['kp'],
+                kd=pd_params['kd'],
+                mrtd_df=human_config['mrtd_df'],
+                mrtd_pf=human_config['mrtd_pf']
+            )
+            
+        # Get exo controller configuration
+        exo_config = config['controllers']['exo']
+        if exo_config['type'] == "PD":
+            pd_params = exo_config['pd_params']
+            self.exo_controller = ExoPDController(
+                model=model,
+                data=data,
+                max_torque=exo_config['max_torque'],
+                kp=pd_params['kp'],
+                kd=pd_params['kd']
+            )
+        elif exo_config['type'] == "GC":
+            gc_params = exo_config['gc_params']
+            self.exo_controller = ExoGravityCompensation(
+                model=model,
+                data=data,
+                max_torque=exo_config['max_torque'],
+                compensation_factor=gc_params['compensation_factor']
+            )
     def controller(self, model, data):
-        """
-        Controller function for the leg. The only two parameters 
-        for this function can be mujoco.model and mujoco.data
-        otherwise it doesn't seem to run properly
-        """
-        
-        error = self.ankle_position_setpoint - data.sensordata[0]
-        # # # GRAVITY COMPENSATION #
-        # human_torque = self.K_p * error 
-        # data.ctrl[0] = human_torque
-        # print(data.ctrl[0])
-        # # PD #
-        # Kp =800
-        # Kd =10
-        # delta_error = error - self.prev_error
-        # delta_time = model.opt.timestep  # MuJoCo 仿真步长
-        # derivative = delta_error / delta_time  # 计算微分项
-        # human_torque = Kp * error + Kd * derivative
-        # data.ctrl[0] = human_torque
-        # self.prev_error = error
-
-        if not hasattr(self, 'K'):
-            # 系统参数
-            m = 80.0 - 2 * 0.0145 * 80.0  # 总质量(kg)
-            l = 0.575 * 1.78   # 到COM的距离(m)
-            g = 9.81  # 重力加速度(m/s^2)
-            b = 2.5   # 阻尼系数
-            I = m * l**2  # 转动惯量
-            
-            # 状态空间矩阵
-            # A = np.array([[0, 1],
-            #             [g/l, -b/(m*l**2)]])
-            # B = np.array([[0],
-            #             [1/(m*l**2)]])
-            A = np.array([[0, 1],
-                        [-m*g*l/I, -b/I]])
-            B = np.array([[0],
-                        [1/I]])
-
-            
-            # LQR权重矩阵
-            Q = np.diag([5000, 100])  # 状态权重：角度误差权重大，角速度误差权重小
-            R = np.array([[0.01]])   # 控制输入权重
-            
-            # 求解连续时间黎卡提方程
-            P = linalg.solve_continuous_are(A, B, Q, R)
-            
-            # 计算LQR增益矩阵
-            # self.K = np.dot(np.linalg.inv(R), np.dot(B.T, P))
-            self.K = np.linalg.solve(R, B.T @ P)
-
-            
-            # 为了后续计算初始化上一时刻状态
-            self.prev_state = np.array([0.0, 0.0])
-            
-            print("LQR controller initialized with gains:", self.K)
-        
-        # 获取当前状态 [theta, theta_dot]
-        current_state = np.array([
-            data.sensordata[0],  # 踝关节角度
-            data.qvel[3]         # 踝关节角速度
+        """Controller function for the leg."""
+        # Get current state
+        state = np.array([
+            data.sensordata[0],  # Joint angle
+            data.qvel[3]         # Joint velocity
         ])
         
-        # 计算误差状态
-        error_state = np.array([
-            current_state[0] - self.ankle_position_setpoint,  # 角度误差
-            current_state[1]                                  # 角速度
-        ])
-        
-        # 计算LQR控制输入
-        human_torque = -np.dot(self.K, error_state)
-        human_torque = float(human_torque[0])
-        
-        # 更新控制输入
+        # Compute human control
+        human_torque = self.human_controller.compute_control(
+            state=state,
+            target=self.ankle_position_setpoint
+        )
         data.ctrl[0] = human_torque
         
-        # 存储当前状态用于下一时刻计算
-        self.prev_state = current_state
+        # Compute exo control
+        exo_torque = self.exo_controller.compute_control(
+            state=state,
+            target=self.ankle_position_setpoint
+        )
+        data.ctrl[1] = exo_torque
 
-
-        # ################## test MRTD ##########
-        # PD 控制计算 human torque
-        # Kp = 500
-        # Kd = 20
-        # delta_error = error - self.prev_error
-        # delta_time = model.opt.timestep
-        # derivative = delta_error / delta_time
-        # desired_torque = Kp * error + Kd * derivative
-
-        # # 确保 prev_torque 初始化
-        # if not hasattr(self, 'prev_torque'):
-        #     self.prev_torque = 0.0
-        #     self.prev_error = 0.0
-
-        # prev_torque = self.prev_torque
-
-        # # MRTD 约束（单位 Nm/s）
-        # MRTD_df = 148/15  # Dorsiflexion（背屈）
-        # MRTD_pf = 389/15  # Plantarflexion（跖屈）
-
-        # # 计算 torque 变化量
-        # delta_torque = desired_torque - prev_torque
-
-        # # 施加 MRTD 约束
-        # if delta_torque > 0:
-        #     max_increase = MRTD_df * delta_time
-        #     delta_torque = min(delta_torque, max_increase)
-        # else:
-        #     max_decrease = -MRTD_pf * delta_time
-        #     delta_torque = max(delta_torque, max_decrease)
-
-        # # 更新 human torque
-        # human_torque = prev_torque + delta_torque
-
-        # # 存储数据
-        # self.prev_torque = human_torque
-        # self.prev_error = error
-
-        # # 施加到 MuJoCo 控制
-        # data.ctrl[0] = human_torque
-
-        ##############################################
+    # # this function has to stay in this script per MuJoCo documentation
+    # def controller(self, model, data):
+    #     """
+    #     Controller function for the leg. The only two parameters 
+    #     for this function can be mujoco.model and mujoco.data
+    #     otherwise it doesn't seem to run properly
+    #     """
         
+    #     error = self.ankle_position_setpoint - data.sensordata[0]
+    #     # # # GRAVITY COMPENSATION #
+    #     # human_torque = self.K_p * error 
+    #     # data.ctrl[0] = human_torque
+    #     # print(data.ctrl[0])
+    #     # # PD #
+    #     # Kp =800
+    #     # Kd =10
+    #     # delta_error = error - self.prev_error
+    #     # delta_time = model.opt.timestep  # MuJoCo 仿真步长
+    #     # derivative = delta_error / delta_time  # 计算微分项
+    #     # human_torque = Kp * error + Kd * derivative
+    #     # data.ctrl[0] = human_torque
+    #     # self.prev_error = error
 
-        # k_exo = 0.5  # 读取 config 里的补偿系数
-        # exo_torque = - k_exo * data.qfrc_bias[3]  # 计算外骨骼力矩
-        # data.ctrl[1] = exo_torque
-
-        # 计算外骨骼力矩
-        # 计算外骨骼的 PD 控制
-        # 获取当前踝关节角度和角速度
-        current_angle = data.qpos[3]   # 踝关节当前角度
-        current_velocity = data.qvel[3]  # 踝关节当前角速度
-
-        # PD 控制计算
-        exo_error = self.ankle_position_setpoint - current_angle  # 角度误差
-        exo_torque = self.Kp_exo * exo_error - self.Kd_exo * current_velocity
-
-        # 施加外骨骼力矩
-        # data.ctrl[1] = exo_torque
-        data.ctrl[1] = 0
-        # print(data.ctrl[1])
+    #     if not hasattr(self, 'K'):
+    #         # 系统参数
+    #         m = 80.0 - 2 * 0.0145 * 80.0  # 总质量(kg)
+    #         l = 0.575 * 1.78   # 到COM的距离(m)
+    #         g = 9.81  # 重力加速度(m/s^2)
+    #         b = 2.5   # 阻尼系数
+    #         I = m * l**2  # 转动惯量
             
-        # print("Timestep:", data.time)
-        # print("Control torque:", data.ctrl[0]*15 + data.ctrl[1]*5)  # 控制器指定的总力矩
-        # print("Actual joint torque:", data.qfrc_actuator[3])        # 实际执行的关节力矩
-        # print("Passive damping:", data.qfrc_passive[3])             # 被动阻尼力矩
-        # print("Constraint force:", data.qfrc_constraint[3])         # 约束力产生的力矩
-        # # print("Contact force:", data.qfrc_contact[3])               # 接触力产生的力矩
-        # Log the actuator torque and timestep to an array for later use
-        # control_torque_time_array = np.array([data.time, human_torque])
-        # control_log_queue.put(control_torque_time_array)
+    #         # 状态空间矩阵
+    #         # A = np.array([[0, 1],
+    #         #             [g/l, -b/(m*l**2)]])
+    #         # B = np.array([[0],
+    #         #             [1/(m*l**2)]])
+    #         A = np.array([[0, 1],
+    #                     [-m*g*l/I, -b/I]])
+    #         B = np.array([[0],
+    #                     [1/I]])
 
-        # x_perturbation=0
+            
+    #         # LQR权重矩阵
+    #         Q = np.diag([300, 100])  # 状态权重：角度误差权重大，角速度误差权重小
+    #         R = np.array([[0.1]])   # 控制输入权重
+            
+    #         # 求解连续时间黎卡提方程
+    #         P = linalg.solve_continuous_are(A, B, Q, R)
+            
+    #         # 计算LQR增益矩阵
+    #         # self.K = np.dot(np.linalg.inv(R), np.dot(B.T, P))
+    #         self.K = np.linalg.solve(R, B.T @ P)
 
-        # if not perturbation_queue.empty():
-        #     # print(f"perturbation: {perturbation_queue.get()}, time: {time.time()-start}")
-        #     x_perturbation = perturbation_queue.get()
-        #     perturbation_datalogger_queue.put(x_perturbation)
+            
+    #         # 为了后续计算初始化上一时刻状态
+    #         self.prev_state = np.array([0.0, 0.0])
+            
+    #         print("LQR controller initialized with gains:", self.K)
         
-        # # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
-        # data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
+    #     # 获取当前状态 [theta, theta_dot]
+    #     current_state = np.array([
+    #         data.sensordata[0],  # 踝关节角度
+    #         data.qvel[3]         # 踝关节角速度
+    #     ])
+        
+    #     # 计算误差状态
+    #     error_state = np.array([
+    #         current_state[0] - self.ankle_position_setpoint,  # 角度误差
+    #         current_state[1]                                  # 角速度
+    #     ])
+        
+    #     # 计算LQR控制输入
+    #     human_torque = -np.dot(self.K, error_state)
+    #     human_torque = float(human_torque[0])
+        
+    #     # 更新控制输入
+    #     data.ctrl[0] = human_torque
+        
+    #     # 存储当前状态用于下一时刻计算
+    #     self.prev_state = current_state
+
+
+    #     # ################## test MRTD ##########
+    #     # PD 控制计算 human torque
+    #     # Kp = 500
+    #     # Kd = 20
+    #     # delta_error = error - self.prev_error
+    #     # delta_time = model.opt.timestep
+    #     # derivative = delta_error / delta_time
+    #     # desired_torque = Kp * error + Kd * derivative
+
+    #     # # 确保 prev_torque 初始化
+    #     # if not hasattr(self, 'prev_torque'):
+    #     #     self.prev_torque = 0.0
+    #     #     self.prev_error = 0.0
+
+    #     # prev_torque = self.prev_torque
+
+    #     # # MRTD 约束（单位 Nm/s）
+    #     # MRTD_df = 148/15  # Dorsiflexion（背屈）
+    #     # MRTD_pf = 389/15  # Plantarflexion（跖屈）
+
+    #     # # 计算 torque 变化量
+    #     # delta_torque = desired_torque - prev_torque
+
+    #     # # 施加 MRTD 约束
+    #     # if delta_torque > 0:
+    #     #     max_increase = MRTD_df * delta_time
+    #     #     delta_torque = min(delta_torque, max_increase)
+    #     # else:
+    #     #     max_decrease = -MRTD_pf * delta_time
+    #     #     delta_torque = max(delta_torque, max_decrease)
+
+    #     # # 更新 human torque
+    #     # human_torque = prev_torque + delta_torque
+
+    #     # # 存储数据
+    #     # self.prev_torque = human_torque
+    #     # self.prev_error = error
+
+    #     # # 施加到 MuJoCo 控制
+    #     # data.ctrl[0] = human_torque
+
+    #     ##############################################
+        
+
+    #     # k_exo = 0.5  # 读取 config 里的补偿系数
+    #     # exo_torque = - k_exo * data.qfrc_bias[3]  # 计算外骨骼力矩
+    #     # data.ctrl[1] = exo_torque
+
+    #     # 计算外骨骼力矩
+    #     # 计算外骨骼的 PD 控制
+    #     # 获取当前踝关节角度和角速度
+    #     current_angle = data.qpos[3]   # 踝关节当前角度
+    #     current_velocity = data.qvel[3]  # 踝关节当前角速度
+
+    #     # PD 控制计算
+    #     exo_error = self.ankle_position_setpoint - current_angle  # 角度误差
+    #     exo_torque = self.Kp_exo * exo_error - self.Kd_exo * current_velocity
+
+    #     # 施加外骨骼力矩
+    #     # data.ctrl[1] = exo_torque
+    #     data.ctrl[1] = 0
+    #     # print(data.ctrl[1])
+            
+    #     # print("Timestep:", data.time)
+    #     # print("Control torque:", data.ctrl[0]*15 + data.ctrl[1]*5)  # 控制器指定的总力矩
+    #     # print("Actual joint torque:", data.qfrc_actuator[3])        # 实际执行的关节力矩
+    #     # print("Passive damping:", data.qfrc_passive[3])             # 被动阻尼力矩
+    #     # print("Constraint force:", data.qfrc_constraint[3])         # 约束力产生的力矩
+    #     # # print("Contact force:", data.qfrc_contact[3])               # 接触力产生的力矩
+    #     # Log the actuator torque and timestep to an array for later use
+    #     # control_torque_time_array = np.array([data.time, human_torque])
+    #     # control_log_queue.put(control_torque_time_array)
+
+    #     # x_perturbation=0
+
+    #     # if not perturbation_queue.empty():
+    #     #     # print(f"perturbation: {perturbation_queue.get()}, time: {time.time()-start}")
+    #     #     x_perturbation = perturbation_queue.get()
+    #     #     perturbation_datalogger_queue.put(x_perturbation)
+        
+    #     # # data.xfrc_applied[i] = [ F_x, F_y, F_z, R_x, R_y, R_z]
+    #     # data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
 
         
-        # if x_perturbation < -100:
-        #     self.pertcount+=1
+    #     # if x_perturbation < -100:
+    #     #     self.pertcount+=1
         
-        # if x_perturbation == 0:
-        #     # print(f'x_perturbation: {x_perturbation}; percounter: {self.pertcount}')
-        #     self.pertcount=0
-        # print(f"perturbation: {x_perturbation}")
-        # print(f'frc data: {data.cfrc_ext}')
-        # counter = 0
-        # if not counter_queue.empty():
-        #     counter = counter_queue.get()
-        # counter += 1
-        # counter_queue.put(counter)
+    #     # if x_perturbation == 0:
+    #     #     # print(f'x_perturbation: {x_perturbation}; percounter: {self.pertcount}')
+    #     #     self.pertcount=0
+    #     # print(f"perturbation: {x_perturbation}")
+    #     # print(f'frc data: {data.cfrc_ext}')
+    #     # counter = 0
+    #     # if not counter_queue.empty():
+    #     #     counter = counter_queue.get()
+    #     # counter += 1
+    #     # counter_queue.put(counter)
         
-        # Apply joint perturbations in Joint Space
-        # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
-        # data.qfrc_applied[3] = rx_perturbation
-        # data.qfrc_applied[4] = ry_perturbation
+    #     # Apply joint perturbations in Joint Space
+    #     # data.qfrc_applied = [ q_1, q_2, q_3, q_4, q_5, q_6, q_7, q_8]
+    #     # data.qfrc_applied[3] = rx_perturbation
+    #     # data.qfrc_applied[4] = ry_perturbation
 
     # this function is a thread that uses imulse_thread_exit_flag (global variable)
     # not sure if there is a way to move this function to a utility script without 
@@ -456,6 +534,12 @@ class ankleTorqueControl:
         # print(exo_actuator_id)
 
         recorded_control_counter = 0
+
+        params = self.load_params_from_yaml('config.yaml')
+        
+        # Initialize controllers
+        self.initialize_controllers(model, data, params['config'])
+        
 
         control_flag = params['config']['controller_flag']
         if control_flag:
@@ -679,3 +763,4 @@ if __name__ == "__main__":
 
     sim_class = ankleTorqueControl(True)
     sim_class.run()
+ 
