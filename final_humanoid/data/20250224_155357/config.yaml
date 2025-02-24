@@ -1,0 +1,51 @@
+config:
+  H_total: 1.78
+  M_total: 80
+  ankle_initial_position_radians: 0.0872
+  ankle_position_setpoint_radians: 0.0872665
+  apply_perturbation: false
+  camera_azimuth: 87.5
+  camera_distance: 3.0
+  camera_elevation: -5
+  camera_lookat_xyz: 0.012768, -0.000000, 1
+  controller_flag: true
+  controllers:
+    exo:
+      max_torque: 50
+      pd_params:
+        kd: 10
+        kp: 400
+      type: None
+    human:
+      lqr_params:
+        Q_angle: 2000
+        Q_velocity: 400
+        R: 0.01
+      max_torque_df: 43
+      max_torque_pf: -181
+      mrtd_df: 309
+      mrtd_pf: 957
+      pd_params:
+        kd: 10
+        kp: 100
+      type: LQR
+  foot_angle_initial_position_radians: 0
+  gravity: -9.81
+  lit_xml_file: literature_humanoid.xml
+  mp4_file_name: pert_with_contact_force_vis.mp4
+  mp4_flag: false
+  mp4_fps: 60
+  perturbation_magnitude: 100
+  perturbation_period: 3.25
+  perturbation_time: 0.3
+  plotter_flag: true
+  rolling_friction_constant: 0.99
+  simend: 15
+  simulation_timestep: 0.0005
+  translation_friction_constant: 0.99
+  visualize_actuators: false
+  visualize_center_of_mass: false
+  visualize_contact_force: false
+  visualize_joints: false
+  visualize_perturbation_force: false
+  xml_path: initial_humanoid.xml

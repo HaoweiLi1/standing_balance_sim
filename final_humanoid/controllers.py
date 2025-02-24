@@ -65,7 +65,7 @@ class HumanLQRController(HumanController):
         
         # Default LQR weights if not specified
         if Q is None:
-            Q = np.diag([500, 100])
+            Q = np.diag([5000, 100])
         if R is None:
             R = np.array([[0.01]])
             
@@ -171,3 +171,90 @@ class ExoGravityCompensation(ExoController):
         """Compute gravity compensation torque."""
         gravity_torque = -self.compensation_factor * self.data.qfrc_bias[3]
         return self.apply_torque_limits(gravity_torque)
+
+class ExoNoneController(ExoController):
+    """Controller that always returns zero torque (disabled exoskeleton)."""
+    
+    def __init__(self, model, data, max_torque=0):
+        # Initialize with zero actual max torque
+        super().__init__(model, data, 0)
+        
+    def compute_control(self, state, target):
+        """Always return zero torque."""
+        return 0.0
+
+# Factory functions to create controllers by type name
+
+def create_human_controller(controller_type, model, data, params):
+    """
+    Factory function to create a human controller instance based on type.
+    
+    Args:
+        controller_type: String identifier for the controller type
+        model: MuJoCo model
+        data: MuJoCo data
+        params: Dict containing controller parameters
+        
+    Returns:
+        An instance of a HumanController subclass
+    """
+    if controller_type == "LQR":
+        return HumanLQRController(
+            model=model,
+            data=data,
+            max_torque_df=params.get('max_torque_df', 43),
+            max_torque_pf=params.get('max_torque_pf', -181),
+            mass=params.get('mass', 80),
+            leg_length=params.get('leg_length', 1.0),
+            Q=np.diag([params.get('Q_angle', 5000), params.get('Q_velocity', 100)]),
+            R=np.array([[params.get('R', 0.01)]])
+        )
+    elif controller_type == "PD":
+        return HumanPDController(
+            model=model,
+            data=data,
+            max_torque_df=params.get('max_torque_df', 43),
+            max_torque_pf=params.get('max_torque_pf', -181),
+            kp=params.get('kp', 800),
+            kd=params.get('kd', 10),
+            mrtd_df=params.get('mrtd_df', None),
+            mrtd_pf=params.get('mrtd_pf', None)
+        )
+    else:
+        raise ValueError(f"Unknown human controller type: {controller_type}")
+
+def create_exo_controller(controller_type, model, data, params):
+    """
+    Factory function to create an exo controller instance based on type.
+    
+    Args:
+        controller_type: String identifier for the controller type
+        model: MuJoCo model
+        data: MuJoCo data
+        params: Dict containing controller parameters
+        
+    Returns:
+        An instance of an ExoController subclass
+    """
+    if controller_type == "PD":
+        return ExoPDController(
+            model=model,
+            data=data,
+            max_torque=params.get('max_torque', 50),
+            kp=params.get('kp', 10),
+            kd=params.get('kd', 1)
+        )
+    elif controller_type == "GC":
+        return ExoGravityCompensation(
+            model=model,
+            data=data,
+            max_torque=params.get('max_torque', 50),
+            compensation_factor=params.get('compensation_factor', 0.5)
+        )
+    elif controller_type == "None":
+        return ExoNoneController(
+            model=model,
+            data=data
+        )
+    else:
+        raise ValueError(f"Unknown exo controller type: {controller_type}")
