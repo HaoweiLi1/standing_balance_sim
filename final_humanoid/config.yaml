@@ -29,7 +29,7 @@ config:
 
 
   # Updated perturbation configuration
-  apply_perturbation: True
+  apply_perturbation: False
   perturbation_type: "impulse"  # Options: "none", "impulse", "sinusoidal", "step", "random"
   
   # Impulse perturbation parameters
