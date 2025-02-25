@@ -254,13 +254,7 @@ def create_exo_controller(controller_type, model, data, params):
             kp=params.get('kp', 10),
             kd=params.get('kd', 1)
         )
-    elif controller_type == "GC":
-        return ExoGravityCompensation(
-            model=model,
-            data=data,
-            max_torque=params.get('max_torque', 50),
-            compensation_factor=params.get('compensation_factor', 0.5)
-        )
+
     elif controller_type == "None":
         return ExoNoneController(
             model=model,

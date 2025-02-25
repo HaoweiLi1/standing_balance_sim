@@ -8,12 +8,9 @@ import mediapy as media
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import threading
-import csv
 import time
 from queue import Queue
 import xml.etree.ElementTree as ET
-import imageio
 import yaml
 
 
@@ -69,6 +66,8 @@ class AnkleExoSimulation:
         self.logger = DataLogger()
         self.plotter = None
         
+        self.visualization_flag = self.config.get('visualization_flag', True)
+
         # MuJoCo objects
         self.model = None
         self.data = None
@@ -143,12 +142,6 @@ class AnkleExoSimulation:
                 'kp': pd_params['kp'],
                 'kd': pd_params['kd']
             })
-        elif exo_type == "GC":
-            if 'gc_params' in exo_config:
-                gc_params = exo_config['gc_params']
-                exo_params.update({
-                    'compensation_factor': gc_params['compensation_factor']
-                })
             
         # Create exo controller using factory function
         self.exo_controller = create_exo_controller(
@@ -277,7 +270,7 @@ class AnkleExoSimulation:
 
     def initialize_renderer(self):
         """Initialize renderer if visualization is enabled."""
-        if not self.plot_flag:
+        if not self.visualization_flag:
             print("Visualization disabled, skipping renderer initialization")
             return
             
