@@ -3,7 +3,7 @@ config:
   ankle_position_setpoint_radians: 0.0872665         # set the ankle joint setpoint in radians
   ankle_initial_position_radians:  0.0872 #0.0872665             # set the initial ankle angle in radians
   foot_angle_initial_position_radians: 0                # set the initial angle of the foot
-  simend: 15                                           # set the duration for which the simulation will run
+  simend: 100                                           # set the duration for which the simulation will run
   M_total: 80                                           # total mass of the human, used for literature estimate calculations
   H_total: 1.78                                         # total height of the human, used for literature estimtae calculations
   mp4_file_name: 'pert_with_contact_force_vis.mp4'      # file name for mp4 file to be saved to, if you want to record the simultation rendering

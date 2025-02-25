@@ -146,6 +146,11 @@ class ExoController(Controller):
         """Apply maximum torque limits."""
         return np.clip(torque, -self.max_torque, self.max_torque)
 
+    @property
+    def is_visible(self):
+        """Property indicating whether the exoskeleton should be visible."""
+        return True
+
 class ExoPDController(ExoController):
     """PD controller for exoskeleton."""
     
@@ -182,6 +187,11 @@ class ExoNoneController(ExoController):
     def compute_control(self, state, target):
         """Always return zero torque."""
         return 0.0
+    
+    @property
+    def is_visible(self):
+        """Property indicating whether the exoskeleton should be visible."""
+        return False
 
 # Factory functions to create controllers by type name
 

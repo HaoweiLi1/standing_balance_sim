@@ -60,6 +60,7 @@ class AnkleExoSimulation:
         # Controllers
         self.human_controller = None
         self.exo_controller = None
+        self.show_exoskeleton = True  # Add flag for exoskeleton visibility
         
         # Renderer
         self.renderer = None
@@ -127,6 +128,9 @@ class AnkleExoSimulation:
         exo_config = self.config['controllers']['exo']
         exo_type = exo_config['type']
         
+        # Set show_exoskeleton flag based on controller type
+        self.show_exoskeleton = exo_type != "None"
+        
         # Prepare parameters for exo controller
         exo_params = {
             'max_torque': exo_config.get('max_torque', 0)
@@ -150,6 +154,42 @@ class AnkleExoSimulation:
         self.exo_controller = create_exo_controller(
             exo_type, model, data, exo_params
         )
+        
+        # Set exoskeleton visibility based on controller type
+        self.toggle_exoskeleton_visibility(model, self.show_exoskeleton)
+
+    def toggle_exoskeleton_visibility(self, model, show_exoskeleton):
+        """
+        Toggle the visibility of exoskeleton components in the model.
+        
+        Args:
+            model: MuJoCo model
+            show_exoskeleton: Boolean indicating whether to show the exoskeleton
+        """
+        # List of all exoskeleton component names
+        exo_geom_names = [
+            "exo_heel_attachment", 
+            "exo_housing", 
+            "exo_connecting_rod",
+            "exo_joint_upper", 
+            "exo_joint_lower",
+            "exo_calf_strap_left",
+            "exo_calf_strap_right",
+            "exo_calf_strap_top"
+        ]
+        
+        # Set the visibility of each component
+        for name in exo_geom_names:
+            geom_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_GEOM, name)
+            if geom_id >= 0:  # Check if the geom exists
+                # Set alpha to 0 (invisible) or 1 (visible)
+                model.geom_rgba[geom_id][3] = 1.0 if show_exoskeleton else 0.0
+                
+                # Additionally, if not showing, move the geom far away to ensure no interactions
+                if not show_exoskeleton:
+                    model.geom_pos[geom_id] = np.array([1000.0, 1000.0, 1000.0])
+                
+        print(f"Exoskeleton visibility set to: {show_exoskeleton}")
 
     def controller(self, model, data):
         """Controller function for the leg."""
@@ -186,16 +226,20 @@ class AnkleExoSimulation:
         tree = ET.parse(xml_path)
         root = tree.getroot()
         h_f, m_feet, m_body, l_COM, l_foot, a, self.K_p = calculate_kp_and_geom(M_total, H_total)
-        set_geometry_params(root, 
-                          m_feet, 
-                          m_body, 
-                          l_COM, 
-                          l_foot, 
-                          a, 
-                          H_total, 
-                          h_f, 
-                          translation_friction_constant, 
-                          rolling_friction_constant)
+        
+        # Set geometry parameters (we always create the exoskeleton components in XML)
+        set_geometry_params(
+            root, 
+            m_feet, 
+            m_body, 
+            l_COM, 
+            l_foot, 
+            a, 
+            H_total, 
+            h_f, 
+            translation_friction_constant, 
+            rolling_friction_constant
+        )
 
         # Write modified model
         literature_model = self.config['lit_xml_file']
@@ -411,4 +455,3 @@ if __name__ == "__main__":
     simulation = AnkleExoSimulation('config.yaml')
     simulation.initialize()
     simulation.run()
- 
