@@ -1,7 +1,7 @@
 config:
   
   ankle_position_setpoint_radians: 0.0872665         # set the ankle joint setpoint in radians
-  ankle_initial_position_radians:  0.0872665 #0.0872665             # set the initial ankle angle in radians
+  ankle_initial_position_radians:  0.0872 #0.0872665             # set the initial ankle angle in radians
 
   foot_angle_initial_position_radians: 0                # set the initial angle of the foot
   simend: 10                                           # set the duration for which the simulation will run
@@ -14,7 +14,7 @@ config:
   rolling_friction_constant: 0.99                       # set the rolling friction constant for model geoms
   xml_path: 'initial_humanoid.xml'                      # set the file path that the run_sim.py script will read and modify with literature estimates
   lit_xml_file: 'literature_humanoid.xml'               # set file path that run_sim.py will save literature estimate XML file too; this is loaded into the MuJoCo backend
-  plotter_flag: True                                 # toggle the Python plotters on / off
+  plotter_flag: False                                 # toggle the Python plotters on / off
   simulation_timestep: 0.0005     #0.0001               # set the simulation timestep - this attribute is critical to simulation success
   visualization_flag: True  # Enable/disable MuJoCo 3D visualization
   visualize_contact_force: False                         # toggle on / off to visualize contact forces
@@ -65,10 +65,6 @@ config:
       mrtd_df: 309        # Maximum rate of torque development for dorsiflexion (Nm/s)
       mrtd_pf: 957        # Maximum rate of torque development for plantarflexion (Nm/s)
       
-      # OpenLoop specific parameters
-      torque_file: "optimal_human_torques.csv"  # Path to CSV file with optimal torques
-      end_behavior: "zero"  # What to do when time exceeds trajectory: 'zero', 'hold_last', 'repeat'
-
       # LQR specific parameters
       lqr_params:
         Q_angle: 2000     # State cost for angle

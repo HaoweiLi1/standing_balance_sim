@@ -121,7 +121,7 @@
 
     
 	<actuator>
-      <motor joint="ankle_hinge" name="human_ankle_actuator" gear="10" ctrlrange="-10 10" ctrllimited="true" /> 
+      <motor joint="ankle_hinge" name="human_ankle_actuator" gear="15" ctrlrange="-10 10" ctrllimited="true" /> 
       <motor joint="ankle_hinge" name="exo_ankle_actuator" gear="10" ctrlrange="-5 5" ctrllimited="true" />
 	</actuator>
 
