@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import scipy.linalg as linalg
+from scipy.interpolate import interp1d
 
 class Controller(ABC):
     """Abstract base class for all controllers."""
@@ -135,6 +136,109 @@ class HumanPDController(HumanController):
         self.prev_error = error
         return torque
 
+class HumanOpenLoopController(HumanController):
+    """Open-loop controller that applies pre-computed torques from a file."""
+    
+    def __init__(self, model, data, max_torque_df, max_torque_pf, 
+                 torque_file, mrtd_df=None, mrtd_pf=None, 
+                 end_behavior='zero'):
+        """
+        Initialize open-loop controller.
+        
+        Args:
+            model: MuJoCo model
+            data: MuJoCo data
+            max_torque_df: Maximum dorsiflexion torque (Nm)
+            max_torque_pf: Maximum plantarflexion torque (Nm)
+            torque_file: Path to CSV file with pre-computed torques
+            mrtd_df: Maximum rate of torque development for dorsiflexion (Nm/s)
+            mrtd_pf: Maximum rate of torque development for plantarflexion (Nm/s)
+            end_behavior: What to do when simulation time exceeds trajectory time
+                          Options: 'zero', 'hold_last', 'repeat'
+        """
+        super().__init__(model, data, max_torque_df, max_torque_pf, mrtd_df, mrtd_pf)
+        self.torque_file = torque_file
+        self.end_behavior = end_behavior
+        self.interpolator = None
+        
+        # Load and process the torque file
+        self._load_torque_data()
+        
+    def _load_torque_data(self):
+        """Load torque data from CSV file and create interpolator."""
+        try:
+            # Load data from CSV: [time, torque]
+            data = np.loadtxt(self.torque_file, delimiter=',')
+            
+            # Extract time and torque columns
+            self.times = data[:, 0]
+            self.torques = data[:, 1]
+            
+            # Get time limits
+            self.t_min = self.times[0]
+            self.t_max = self.times[-1]
+            
+            # Create interpolation function for torques
+            self.interpolator = interp1d(
+                self.times, 
+                self.torques, 
+                kind='linear',
+                bounds_error=False,
+                fill_value=(self.torques[0], self.torques[-1])
+            )
+            
+            print(f"Loaded torque profile from {self.torque_file}")
+            print(f"Time range: {self.t_min:.3f}s to {self.t_max:.3f}s")
+            print(f"Torque range: {np.min(self.torques):.3f}Nm to {np.max(self.torques):.3f}Nm")
+            
+        except Exception as e:
+            print(f"Error loading torque data: {e}")
+            # Create a fallback that just returns zeros
+            self.times = np.array([0, 1])
+            self.torques = np.array([0, 0])
+            self.t_min = 0
+            self.t_max = 1
+            self.interpolator = lambda t: 0.0
+    
+    def compute_control(self, state, target):
+        """
+        Compute control based on current time from pre-computed torque profile.
+        
+        Args:
+            state: Current state [angle, velocity]
+            target: Target state
+            
+        Returns:
+            Pre-computed torque for the current time
+        """
+        # Get current time
+        current_time = self.data.time
+        
+        # Handle time beyond the pre-computed trajectory
+        if current_time > self.t_max:
+            if self.end_behavior == 'zero':
+                torque = 0.0
+            elif self.end_behavior == 'hold_last':
+                torque = self.torques[-1]
+            elif self.end_behavior == 'repeat':
+                # Modulo to repeat the trajectory
+                adj_time = self.t_min + ((current_time - self.t_min) % (self.t_max - self.t_min))
+                torque = float(self.interpolator(adj_time))
+            else:
+                torque = 0.0
+        else:
+            # Interpolate to get torque at current time
+            torque = float(self.interpolator(current_time))
+        
+        # Apply torque limits
+        torque = self.apply_torque_limits(torque)
+        
+        # Apply MRTD limits if specified
+        if self.mrtd_df is not None and self.mrtd_pf is not None:
+            torque = self.apply_mrtd_limits(torque, self.model.opt.timestep)
+        
+        return torque
+
 class ExoController(Controller):
     """Base class for exoskeleton controllers."""
     
@@ -229,6 +333,17 @@ def create_human_controller(controller_type, model, data, params):
             kd=params.get('kd', 10),
             mrtd_df=params.get('mrtd_df', None),
             mrtd_pf=params.get('mrtd_pf', None)
+        )
+    elif controller_type == "OpenLoop":
+        return HumanOpenLoopController(
+            model=model,
+            data=data,
+            max_torque_df=params.get('max_torque_df', 43),
+            max_torque_pf=params.get('max_torque_pf', -181),
+            torque_file=params.get('torque_file', 'optimal_human_torques.csv'),
+            mrtd_df=params.get('mrtd_df', None),
+            mrtd_pf=params.get('mrtd_pf', None),
+            end_behavior=params.get('end_behavior', 'hold_last')
         )
     else:
         raise ValueError(f"Unknown human controller type: {controller_type}")

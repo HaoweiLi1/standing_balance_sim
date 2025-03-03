@@ -313,7 +313,7 @@ class AnkleExoSimulation:
         exo_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "exo_ankle_actuator")
         
         # Get torque values
-        human_torque_executed = self.data.actuator_force[human_actuator_id] * 15
+        human_torque_executed = self.data.actuator_force[human_actuator_id] * 10
         exo_torque_executed = self.data.actuator_force[exo_actuator_id] * 10
         ankle_torque_executed = self.data.qfrc_actuator[self.ankle_joint_id]
         gravity_torque = self.data.qfrc_bias[self.ankle_joint_id]
