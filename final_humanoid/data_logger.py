@@ -133,3 +133,4 @@ class DataLogger:
         self.create_dataset("body_com", 4)        # time, x, y, z
         self.create_dataset("constraint_force", 5)  # time, f1, f2, f3, f4
         self.create_dataset("contact_force", 3)   # time, front, back
+        self.create_dataset("human_rtd", 3)       # time, rtd_value, rtd_limit

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import scipy.linalg as linalg
+import mujoco as mj
 
 class Controller(ABC):
     """Abstract base class for all controllers."""
@@ -24,28 +25,47 @@ class HumanController(Controller):
         self.max_torque_pf = max_torque_pf
         # Maximum rate of torque development limits if specified
         self.mrtd_df = mrtd_df
+        print(self.mrtd_df)
         self.mrtd_pf = mrtd_pf
+        print(self.mrtd_pf)
         self.prev_torque = 0.0
+        self.current_rtd = 0.0     # Store the current RTD
+        self.current_rtd_limit = 0.0  # Store the applied limit
+
+        # Get the gear ratio for the human actuator
+        human_actuator_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_ACTUATOR, "human_ankle_actuator")
+        self.gear_ratio = model.actuator_gear[human_actuator_id][0]
+        # print(f"Human actuator gear ratio: {self.gear_ratio}")
         
     def apply_torque_limits(self, torque):
         """Apply maximum torque limits."""
-        return np.clip(torque, self.max_torque_pf, self.max_torque_df)
+        max_df = self.max_torque_df / self.gear_ratio
+        max_pf = self.max_torque_pf / self.gear_ratio
+        return np.clip(torque, max_pf, max_df)
     
     def apply_mrtd_limits(self, desired_torque, timestep):
         """Apply rate of torque development limits if enabled."""
         if self.mrtd_df is None or self.mrtd_pf is None:
+            self.current_rtd = 0.0
+            self.current_rtd_limit = float('inf')  # No limit
             return desired_torque
             
         delta_torque = desired_torque - self.prev_torque
+        self.current_rtd = delta_torque / timestep
         
         if delta_torque > 0:
-            max_increase = self.mrtd_df * timestep
+            max_increase = (self.mrtd_df / self.gear_ratio) * timestep
+            rtd_limit = self.mrtd_df
             delta_torque = min(delta_torque, max_increase)
         else:
-            max_decrease = -self.mrtd_pf * timestep
+            max_decrease = -(self.mrtd_pf / self.gear_ratio) * timestep
+            rtd_limit = -self.mrtd_pf
             delta_torque = max(delta_torque, max_decrease)
             
+        self.current_rtd_limit = rtd_limit    
         limited_torque = self.prev_torque + delta_torque
+
+
         self.prev_torque = limited_torque
         return limited_torque
 
@@ -53,8 +73,9 @@ class HumanLQRController(HumanController):
     """LQR controller for human joint."""
     
     def __init__(self, model, data, max_torque_df, max_torque_pf, mass, leg_length, 
-                 Q=None, R=None, damping=2.5):
-        super().__init__(model, data, max_torque_df, max_torque_pf)
+                 Q=None, R=None, damping=2.5, mrtd_df=None, mrtd_pf=None):
+        # Pass mrtd parameters to parent class
+        super().__init__(model, data, max_torque_df, max_torque_pf, mrtd_df, mrtd_pf)
         
         # System parameters
         self.m = mass
@@ -165,17 +186,6 @@ class ExoPDController(ExoController):
         torque = self.kp * error - self.kd * state[1]
         return self.apply_torque_limits(torque)
 
-class ExoGravityCompensation(ExoController):
-    """Gravity compensation controller for exoskeleton."""
-    
-    def __init__(self, model, data, max_torque, compensation_factor=0.5):
-        super().__init__(model, data, max_torque)
-        self.compensation_factor = compensation_factor
-        
-    def compute_control(self, state, target):
-        """Compute gravity compensation torque."""
-        gravity_torque = -self.compensation_factor * self.data.qfrc_bias[3]
-        return self.apply_torque_limits(gravity_torque)
 
 class ExoNoneController(ExoController):
     """Controller that always returns zero torque (disabled exoskeleton)."""
@@ -217,7 +227,10 @@ def create_human_controller(controller_type, model, data, params):
             mass=params.get('mass', 80),
             leg_length=params.get('leg_length', 1.0),
             Q=np.diag([params.get('Q_angle', 5000), params.get('Q_velocity', 100)]),
-            R=np.array([[params.get('R', 0.01)]])
+            R=np.array([[params.get('R', 0.01)]]),
+            # Add these explicitly:
+            mrtd_df=params.get('mrtd_df'),
+            mrtd_pf=params.get('mrtd_pf')
         )
     elif controller_type == "PD":
         return HumanPDController(

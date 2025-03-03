@@ -497,6 +497,53 @@ class DataPlotter:
         else:
             plt.close()
     
+    def plot_rtd(self, show=True, save=False):
+        """
+        Plot Rate of Torque Development (RTD) and its limits.
+        
+        Args:
+            show: Whether to show the plot
+            save: Whether to save the plot
+        """
+        # Check if required dataset exists
+        if "human_rtd" not in self.data:
+            print("Error: RTD dataset not found.")
+            return
+        
+        # Create figure
+        plt.figure(figsize=(12, 6))
+        
+        # Get data
+        rtd_data = self.data["human_rtd"]
+        
+        # Plot RTD values
+        plt.plot(rtd_data[:, 0], rtd_data[:, 1], label="Actual RTD", color='b')
+        
+        # Plot positive limit
+        plt.axhline(y=rtd_data[0, 2], color='r', linestyle='--', label="RTD Limit")
+        
+        # Plot negative limit (if available)
+        if rtd_data.shape[1] > 2 and np.any(rtd_data[:, 2] < 0):
+            plt.axhline(y=-rtd_data[0, 2], color='r', linestyle='--')
+        
+        plt.xlabel("Time [s]")
+        plt.ylabel("Rate of Torque Development [Nm/s]")
+        plt.title("Human Ankle Torque Development Rate")
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.legend()
+        
+        # Save the plot if requested
+        if save:
+            plot_dir = os.path.join(self.data_dir, 'plots')
+            os.makedirs(plot_dir, exist_ok=True)
+            plt.savefig(os.path.join(plot_dir, "rtd_plot.png"), dpi=300, bbox_inches='tight')
+        
+        # Show the plot if requested
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
     def generate_all_plots(self, show=False, save=True):
         """
         Generate all standard plots and save them.
@@ -512,6 +559,7 @@ class DataPlotter:
         self.plot_torques(show=show, save=save)
         self.plot_gravity_compensation(show=show, save=save)
         self.plot_perturbation_response(show=show, save=save)
+        self.plot_rtd(show=show, save=save)  # Add this line
         
         # Create dashboard
         self.plot_dashboard(show=show, save=save)

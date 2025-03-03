@@ -93,6 +93,10 @@ class AnkleExoSimulation:
         human_config = self.config['controllers']['human']
         human_type = human_config['type']
         
+        # Debug prints
+        print(f"MRTD from config - DF: {human_config.get('mrtd_df')}, PF: {human_config.get('mrtd_pf')}")
+        print(f"Human config keys: {list(human_config.keys())}")
+
         # Prepare parameters for human controller
         human_params = {
             'max_torque_df': human_config['max_torque_df'],
@@ -102,6 +106,9 @@ class AnkleExoSimulation:
             'mrtd_df': human_config.get('mrtd_df'),
             'mrtd_pf': human_config.get('mrtd_pf')
         }
+
+        # Debug print
+        print(f"Human params for controller: {human_params}")
         
         # Add controller-specific parameters
         if human_type == "LQR":
@@ -130,19 +137,38 @@ class AnkleExoSimulation:
         # Set show_exoskeleton flag based on controller type
         self.show_exoskeleton = exo_type != "None"
         
+        # Get the pre-calculated values from xml_utilities
+        _, m_feet, m_body, l_COM, _, _, K_p = calculate_kp_and_geom(
+            self.config['M_total'], 
+            self.config['H_total']
+        )
+
         # Prepare parameters for exo controller
         exo_params = {
             'max_torque': exo_config.get('max_torque', 0)
         }
         
         # Add controller-specific parameters
-        if exo_type == "PD":
-            pd_params = exo_config['pd_params']
+        if exo_type == "PD" and exo_config.get('pd_params', {}).get('use_dynamic_gains', False):
+            # Calculate Kp and Kd dynamically using the pre-calculated values
+            kp = K_p  # Already calculated as m_body * g * l_COM
+            kd = 0.3 * np.sqrt(m_body * l_COM**2 * kp)
+            
             exo_params.update({
-                'kp': pd_params['kp'],
-                'kd': pd_params['kd']
+                'kp': kp,
+                'kd': kd
             })
             
+            print(f"Exo PD controller configured with dynamic gains - Kp: {kp:.2f}, Kd: {kd:.2f}")
+
+        elif exo_type == "PD":
+            # Use the values from config if dynamic gains are not enabled
+            pd_params = exo_config['pd_params']
+            exo_params.update({
+                'kp': pd_params.get('kp', 400),
+                'kd': pd_params.get('kd', 10)
+            })
+
         # Create exo controller using factory function
         self.exo_controller = create_exo_controller(
             exo_type, model, data, exo_params
@@ -311,10 +337,10 @@ class AnkleExoSimulation:
         # Extract actuator IDs
         human_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "human_ankle_actuator")
         exo_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "exo_ankle_actuator")
-        
+
         # Get torque values
         human_torque_executed = self.data.actuator_force[human_actuator_id] * 15
-        exo_torque_executed = self.data.actuator_force[exo_actuator_id] * 10
+        exo_torque_executed = self.data.actuator_force[exo_actuator_id] 
         ankle_torque_executed = self.data.qfrc_actuator[self.ankle_joint_id]
         gravity_torque = self.data.qfrc_bias[self.ankle_joint_id]
         
@@ -347,6 +373,14 @@ class AnkleExoSimulation:
         # COM data
         com = self.data.xipos[self.human_body_id]
         self.logger.log_data("body_com", np.array([self.data.time, com[0], com[1], com[2]]))
+
+        # Log RTD data - add this at the end
+        if hasattr(self.human_controller, 'current_rtd'):
+            self.logger.log_data("human_rtd", np.array([
+                self.data.time, 
+                self.human_controller.current_rtd, 
+                self.human_controller.current_rtd_limit
+            ]))
         
     def _simulation_step(self):
         """Execute one step of the simulation."""
