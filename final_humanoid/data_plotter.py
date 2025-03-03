@@ -189,42 +189,86 @@ class DataPlotter:
     
     def plot_joint_state(self, show=True, save=False):
         """
-        Plot joint position, goal position, and velocity.
+        Plot joint position, goal position, and velocity for ankle and hip.
         
         Args:
             show: Whether to show the plot
             save: Whether to save the plot
         """
         # Check if required datasets exist
-        required = ["joint_position", "goal_position", "joint_velocity"]
-        for name in required:
-            if name not in self.data:
-                print(f"Error: Required dataset '{name}' not found.")
-                return
+        ankle_required = ["joint_position", "goal_position", "joint_velocity"]
+        hip_required = ["hip_joint_position", "hip_goal_position", "hip_joint_velocity"]
+        
+        ankle_data_exists = all(name in self.data for name in ankle_required)
+        hip_data_exists = all(name in self.data for name in hip_required)
+        
+        if not ankle_data_exists and not hip_data_exists:
+            print("Error: Required datasets not found.")
+            return
+        
+        # Determine how many subplots we need
+        num_joints = 0
+        if ankle_data_exists:
+            num_joints += 1
+        if hip_data_exists:
+            num_joints += 1
         
         # Create figure with subplots
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+        fig, axes = plt.subplots(2, num_joints, figsize=(6*num_joints, 8), sharex=True)
         
-        # Get data
-        pos_data = self.data["joint_position"]
-        goal_data = self.data["goal_position"]
-        vel_data = self.data["joint_velocity"]
+        # Handle case where there's only one joint (makes axes indexing consistent)
+        if num_joints == 1:
+            axes = np.array([axes]).transpose()
         
-        # Plot position and goal
-        ax1.plot(pos_data[:, 0], pos_data[:, 1], label="Actual Position")
-        ax1.plot(goal_data[:, 0], goal_data[:, 1], label="Goal Position", linestyle='--')
-        ax1.set_ylabel("Angle [deg]")
-        ax1.set_title("Joint Position and Goal")
-        ax1.grid(True, linestyle='--', alpha=0.7)
-        ax1.legend()
+        plot_idx = 0
         
-        # Plot velocity
-        ax2.plot(vel_data[:, 0], vel_data[:, 1], label="Joint Velocity", color='g')
-        ax2.set_xlabel("Time [s]")
-        ax2.set_ylabel("Angular Velocity [deg/s]")
-        ax2.set_title("Joint Velocity")
-        ax2.grid(True, linestyle='--', alpha=0.7)
-        ax2.legend()
+        # Plot ankle data if available
+        if ankle_data_exists:
+            # Get data
+            pos_data = self.data["joint_position"]
+            goal_data = self.data["goal_position"]
+            vel_data = self.data["joint_velocity"]
+            
+            # Plot position and goal
+            axes[0, plot_idx].plot(pos_data[:, 0], pos_data[:, 1], label="Actual Position")
+            axes[0, plot_idx].plot(goal_data[:, 0], goal_data[:, 1], label="Goal Position", linestyle='--')
+            axes[0, plot_idx].set_ylabel("Angle [deg]")
+            axes[0, plot_idx].set_title("Ankle Joint Position and Goal")
+            axes[0, plot_idx].grid(True, linestyle='--', alpha=0.7)
+            axes[0, plot_idx].legend()
+            
+            # Plot velocity
+            axes[1, plot_idx].plot(vel_data[:, 0], vel_data[:, 1], label="Joint Velocity", color='g')
+            axes[1, plot_idx].set_xlabel("Time [s]")
+            axes[1, plot_idx].set_ylabel("Angular Velocity [deg/s]")
+            axes[1, plot_idx].set_title("Ankle Joint Velocity")
+            axes[1, plot_idx].grid(True, linestyle='--', alpha=0.7)
+            axes[1, plot_idx].legend()
+            
+            plot_idx += 1
+        
+        # Plot hip data if available
+        if hip_data_exists:
+            # Get data
+            pos_data = self.data["hip_joint_position"]
+            goal_data = self.data["hip_goal_position"]
+            vel_data = self.data["hip_joint_velocity"]
+            
+            # Plot position and goal
+            axes[0, plot_idx].plot(pos_data[:, 0], pos_data[:, 1], label="Actual Position")
+            axes[0, plot_idx].plot(goal_data[:, 0], goal_data[:, 1], label="Goal Position", linestyle='--')
+            axes[0, plot_idx].set_ylabel("Angle [deg]")
+            axes[0, plot_idx].set_title("Hip Joint Position and Goal")
+            axes[0, plot_idx].grid(True, linestyle='--', alpha=0.7)
+            axes[0, plot_idx].legend()
+            
+            # Plot velocity
+            axes[1, plot_idx].plot(vel_data[:, 0], vel_data[:, 1], label="Joint Velocity", color='g')
+            axes[1, plot_idx].set_xlabel("Time [s]")
+            axes[1, plot_idx].set_ylabel("Angular Velocity [deg/s]")
+            axes[1, plot_idx].set_title("Hip Joint Velocity")
+            axes[1, plot_idx].grid(True, linestyle='--', alpha=0.7)
+            axes[1, plot_idx].legend()
         
         # Adjust layout
         plt.tight_layout()
@@ -329,6 +373,69 @@ class DataPlotter:
         else:
             plt.close()
     
+    def plot_multi_joint_torques(self, show=True, save=False):
+        """
+        Plot torques for both ankle and hip joints.
+        
+        Args:
+            show: Whether to show the plot
+            save: Whether to save the plot
+        """
+        # Check if datasets exist
+        ankle_data_exists = "ankle_torque" in self.data
+        hip_data_exists = "human_hip_torque" in self.data
+        
+        if not ankle_data_exists and not hip_data_exists:
+            print("Error: No joint torque data found.")
+            return
+            
+        # Create figure with subplots
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        
+        # Plot ankle torques if available
+        if ankle_data_exists and "human_torque" in self.data and "exo_torque" in self.data:
+            human_data = self.data["human_torque"]
+            exo_data = self.data["exo_torque"]
+            ankle_data = self.data["ankle_torque"]
+            
+            axes[0].plot(human_data[:, 0], human_data[:, 1], label="Human")
+            axes[0].plot(exo_data[:, 0], exo_data[:, 1], label="Exoskeleton")
+            axes[0].plot(ankle_data[:, 0], ankle_data[:, 1], label="Total", linestyle='-.')
+            axes[0].set_xlabel("Time [s]")
+            axes[0].set_ylabel("Torque [Nm]")
+            axes[0].set_title("Ankle Joint Torques")
+            axes[0].grid(True, linestyle='--', alpha=0.7)
+            axes[0].legend()
+        
+        # Plot hip torques if available
+        if hip_data_exists:
+            hip_data = self.data["human_hip_torque"]
+            
+            axes[1].plot(hip_data[:, 0], hip_data[:, 1], label="Human Hip")
+            if "hip_gravity_torque" in self.data:
+                gravity_data = self.data["hip_gravity_torque"]
+                axes[1].plot(gravity_data[:, 0], gravity_data[:, 1], label="Gravity", linestyle='--')
+            axes[1].set_xlabel("Time [s]")
+            axes[1].set_ylabel("Torque [Nm]")
+            axes[1].set_title("Hip Joint Torques")
+            axes[1].grid(True, linestyle='--', alpha=0.7)
+            axes[1].legend()
+        
+        # Adjust layout
+        plt.tight_layout()
+        
+        # Save the plot if requested
+        if save:
+            plot_dir = os.path.join(self.data_dir, 'plots')
+            os.makedirs(plot_dir, exist_ok=True)
+            plt.savefig(os.path.join(plot_dir, "multi_joint_torques.png"), dpi=300, bbox_inches='tight')
+        
+        # Show the plot if requested
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
     def plot_perturbation_response(self, show=True, save=False):
         """
         Plot perturbation and joint response.
@@ -395,92 +502,118 @@ class DataPlotter:
             save: Whether to save the plot
         """
         # Create figure with grid layout
-        fig = plt.figure(figsize=(16, 12))
-        gs = GridSpec(3, 2, figure=fig)
+        fig = plt.figure(figsize=(18, 14))
+        gs = GridSpec(4, 2, figure=fig)
         
         # Define subplots
-        ax1 = fig.add_subplot(gs[0, 0])  # Joint position
-        ax2 = fig.add_subplot(gs[0, 1])  # Joint velocity
-        ax3 = fig.add_subplot(gs[1, 0])  # Human and exo torques
-        ax4 = fig.add_subplot(gs[1, 1])  # Gravity torque
-        ax5 = fig.add_subplot(gs[2, :])  # Perturbation and response
+        ax1 = fig.add_subplot(gs[0, 0])  # Ankle joint position
+        ax2 = fig.add_subplot(gs[0, 1])  # Hip joint position
+        ax3 = fig.add_subplot(gs[1, 0])  # Ankle joint velocity
+        ax4 = fig.add_subplot(gs[1, 1])  # Hip joint velocity
+        ax5 = fig.add_subplot(gs[2, 0])  # Ankle torques
+        ax6 = fig.add_subplot(gs[2, 1])  # Hip torques
+        ax7 = fig.add_subplot(gs[3, :])  # Perturbation and response
         
-        # Plot data if available
-        # 1. Joint position and goal
+        # Plot ankle joint position
         if "joint_position" in self.data and "goal_position" in self.data:
             pos_data = self.data["joint_position"]
             goal_data = self.data["goal_position"]
             ax1.plot(pos_data[:, 0], pos_data[:, 1], label="Actual")
             ax1.plot(goal_data[:, 0], goal_data[:, 1], label="Goal", linestyle='--')
             ax1.set_ylabel("Angle [deg]")
-            ax1.set_title("Joint Position")
+            ax1.set_title("Ankle Joint Position")
             ax1.grid(True, linestyle='--', alpha=0.7)
             ax1.legend()
         
-        # 2. Joint velocity
-        if "joint_velocity" in self.data:
-            vel_data = self.data["joint_velocity"]
-            ax2.plot(vel_data[:, 0], vel_data[:, 1], label="Velocity", color='g')
-            ax2.set_ylabel("Angular Velocity [deg/s]")
-            ax2.set_title("Joint Velocity")
+        # Plot hip joint position
+        if "hip_joint_position" in self.data and "hip_goal_position" in self.data:
+            pos_data = self.data["hip_joint_position"]
+            goal_data = self.data["hip_goal_position"]
+            ax2.plot(pos_data[:, 0], pos_data[:, 1], label="Actual")
+            ax2.plot(goal_data[:, 0], goal_data[:, 1], label="Goal", linestyle='--')
+            ax2.set_ylabel("Angle [deg]")
+            ax2.set_title("Hip Joint Position")
             ax2.grid(True, linestyle='--', alpha=0.7)
             ax2.legend()
         
-        # 3. Torques
-        if "human_torque" in self.data and "exo_torque" in self.data:
-            human_data = self.data["human_torque"]
-            exo_data = self.data["exo_torque"]
-            ax3.plot(human_data[:, 0], human_data[:, 1], label="Human")
-            ax3.plot(exo_data[:, 0], exo_data[:, 1], label="Exo")
-            if "ankle_torque" in self.data:
-                ankle_data = self.data["ankle_torque"]
-                ax3.plot(ankle_data[:, 0], ankle_data[:, 1], label="Total", linestyle='-.')
-            ax3.set_ylabel("Torque [Nm]")
-            ax3.set_title("Joint Torques")
+        # Plot ankle velocity
+        if "joint_velocity" in self.data:
+            vel_data = self.data["joint_velocity"]
+            ax3.plot(vel_data[:, 0], vel_data[:, 1], label="Velocity", color='g')
+            ax3.set_ylabel("Angular Velocity [deg/s]")
+            ax3.set_title("Ankle Joint Velocity")
             ax3.grid(True, linestyle='--', alpha=0.7)
             ax3.legend()
         
-        # 4. Gravity torque
-        if "gravity_torque" in self.data and "control_torque" in self.data:
-            gravity_data = self.data["gravity_torque"]
-            control_data = self.data["control_torque"]
-            ax4.plot(gravity_data[:, 0], gravity_data[:, 1], label="Gravity")
-            ax4.plot(control_data[:, 0], control_data[:, 1], label="Control")
-            ax4.set_ylabel("Torque [Nm]")
-            ax4.set_title("Gravity vs Control Torque")
+        # Plot hip velocity
+        if "hip_joint_velocity" in self.data:
+            vel_data = self.data["hip_joint_velocity"]
+            ax4.plot(vel_data[:, 0], vel_data[:, 1], label="Velocity", color='g')
+            ax4.set_ylabel("Angular Velocity [deg/s]")
+            ax4.set_title("Hip Joint Velocity")
             ax4.grid(True, linestyle='--', alpha=0.7)
             ax4.legend()
         
-        # 5. Perturbation and response
+        # Plot ankle torques
+        if "human_torque" in self.data and "exo_torque" in self.data:
+            human_data = self.data["human_torque"]
+            exo_data = self.data["exo_torque"]
+            ax5.plot(human_data[:, 0], human_data[:, 1], label="Human")
+            ax5.plot(exo_data[:, 0], exo_data[:, 1], label="Exo")
+            if "ankle_torque" in self.data:
+                ankle_data = self.data["ankle_torque"]
+                ax5.plot(ankle_data[:, 0], ankle_data[:, 1], label="Total", linestyle='-.')
+            ax5.set_ylabel("Torque [Nm]")
+            ax5.set_title("Ankle Joint Torques")
+            ax5.grid(True, linestyle='--', alpha=0.7)
+            ax5.legend()
+        
+        # Plot hip torques
+        if "human_hip_torque" in self.data:
+            hip_data = self.data["human_hip_torque"]
+            ax6.plot(hip_data[:, 0], hip_data[:, 1], label="Human")
+            if "hip_gravity_torque" in self.data:
+                gravity_data = self.data["hip_gravity_torque"]
+                ax6.plot(gravity_data[:, 0], gravity_data[:, 1], label="Gravity")
+            ax6.set_ylabel("Torque [Nm]")
+            ax6.set_title("Hip Joint Torques")
+            ax6.grid(True, linestyle='--', alpha=0.7)
+            ax6.legend()
+        
+        # Plot perturbation and response
         if "perturbation" in self.data:
             pert_data = self.data["perturbation"]
-            # Only plot perturbation if it's not all zeros
             if np.any(pert_data[:, 1] != 0):
-                ax5.plot(pert_data[:, 0], pert_data[:, 1], label="Perturbation", color='r')
+                ax7.plot(pert_data[:, 0], pert_data[:, 1], label="Perturbation", color='r')
+                
+                # Create twin axes for joint positions
+                ax7_twin = ax7.twinx()
+                
                 if "joint_position" in self.data:
-                    # Add position plot on twin axis
-                    ax5_twin = ax5.twinx()
                     pos_data = self.data["joint_position"]
-                    ax5_twin.plot(pos_data[:, 0], pos_data[:, 1], label="Position", color='b', alpha=0.7)
-                    ax5_twin.set_ylabel("Angle [deg]", color='b')
-                ax5.set_xlabel("Time [s]")
-                ax5.set_ylabel("Force [N]", color='r')
-                ax5.set_title("Perturbation and Response")
-                ax5.grid(True, linestyle='--', alpha=0.7)
+                    ax7_twin.plot(pos_data[:, 0], pos_data[:, 1], label="Ankle", color='b', alpha=0.7)
+                
+                if "hip_joint_position" in self.data:
+                    hip_data = self.data["hip_joint_position"]
+                    ax7_twin.plot(hip_data[:, 0], hip_data[:, 1], label="Hip", color='g', alpha=0.7)
+                    
+                ax7.set_xlabel("Time [s]")
+                ax7.set_ylabel("Force [N]", color='r')
+                ax7_twin.set_ylabel("Angle [deg]")
+                ax7.set_title("Perturbation and Joint Response")
+                ax7.grid(True, linestyle='--', alpha=0.7)
+                
                 # Create combined legend
-                lines1, labels1 = ax5.get_legend_handles_labels()
-                if "joint_position" in self.data:
-                    lines2, labels2 = ax5_twin.get_legend_handles_labels()
-                    ax5.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
-                else:
-                    ax5.legend()
+                lines1, labels1 = ax7.get_legend_handles_labels()
+                lines2, labels2 = ax7_twin.get_legend_handles_labels()
+                ax7.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
         
         # Set common x-label for all subplots
-        for ax in [ax1, ax2, ax3, ax4]:
+        for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
             ax.set_xlabel("Time [s]")
         
         # Add title for the whole figure
-        plt.suptitle("Ankle Exoskeleton Simulation Dashboard", fontsize=16)
+        plt.suptitle("Double-Pendulum with Ankle Exoskeleton Simulation Dashboard", fontsize=16)
         
         # Adjust layout
         plt.tight_layout(rect=[0, 0, 1, 0.97])  # Leave space for suptitle
@@ -510,6 +643,7 @@ class DataPlotter:
         # Create individual plots
         self.plot_joint_state(show=show, save=save)
         self.plot_torques(show=show, save=save)
+        self.plot_multi_joint_torques(show=show, save=save)  # Add new multi-joint plot
         self.plot_gravity_compensation(show=show, save=save)
         self.plot_perturbation_response(show=show, save=save)
         

@@ -5,57 +5,80 @@ def calculate_kp_and_geom(weight, height):
     
     M_total = weight # [kg]
     H_total = height # [meters]
+
     m_feet = 2*0.0145 * M_total
-    m_body = M_total - m_feet
-    l_COM = 0.575*H_total
-    l_foot = 0.152*H_total
+    m_legs = 2 * 0.0465 * M_total  # Both legs (4.65% each)
+    m_torso = M_total - (m_feet + m_legs)  # Rest is torso, arms, head
+
+    l_foot = 0.152 * H_total
+    l_leg = 0.246 * H_total  # Leg length (including thigh and shank)
+    l_torso = 0.5 * H_total  # Upper body length
+
     h_f = 0.039*H_total
     a = 0.19*l_foot
-    K_p = m_body * 9.81 * l_COM 
 
-    return h_f, m_feet, m_body, l_COM, l_foot, a, K_p
+    # CoM positions
+    l_COM_leg = 0.447 * l_leg  # CoM position along leg (from ankle joint)
+    l_COM_torso = 0.5 * l_torso  # CoM position along torso (from hip joint)
+   
+
+    return h_f, m_feet, m_legs, m_torso, l_leg, l_torso, l_COM_leg, l_COM_torso, l_foot, a
 
 
-def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, trans_fric, roll_fric):
+def set_geometry_params(root, m_feet, m_legs, m_torso, l_leg, l_torso, l_COM_leg, l_COM_torso, l_foot, a, H_total, h_f, trans_fric, roll_fric):
 
     for geom in root.iter('geom'):
-        if geom.get('name') == "long_link_geom":
-            geom.set('mass', "0")
-            geom.set('fromto', f'0 0 {H_total} 0 0 0') # this from (x,y,z)_1 to (x,y,z)_2 is w.r.t the long_link_body frame
-            # geom.set('pos', f'0 0 {H_total-l_COM}')
-
-        elif geom.get('name') == "m_body":    
-            geom.set('mass', str(m_body))
-            geom.set('pos', f"0 0 {l_COM}") # this x,y,z position is w.r.t the long_link_body frame
-            # geom.set('size', 0.05)
-        
+        # Update leg geometry
+        if geom.get('name') == "leg_link_geom":
+            geom.set('mass', str(m_legs))
+            geom.set('fromto', f'0 0 0 0 0 {l_leg}')
+            
+        # Update torso geometry
+        elif geom.get('name') == "torso_link_geom":
+            geom.set('mass', "0")  # Set mass to 0 since we'll use a separate CoM
+            geom.set('fromto', f'0 0 0 0 0 {l_torso}')
+            
+        # Update body mass point for torso
+        elif geom.get('name') == "m_body":
+            geom.set('mass', str(m_torso))
+            geom.set('pos', f"0 0 {l_COM_torso}")  # Position at torso's CoM
+            
+        # Update foot geometry
         elif geom.get('name') == "foot":
-            geom.set('pos', f'0 0 0') # this x,y,z position is w.r.t the foot_body frame
+            geom.set('pos', f'0 0 0')  # Position relative to foot_body frame
 
     for body in root.iter('body'):
-            if body.get('name') == "foot":
-                # poo = body.get('pos')
-                # print(f'pos: {poo}')
-                body.set('pos',  f'0. 0 0') # this x,y,z position is w.r.t the global frame
-                body.set('quat', f'0 0 0 1') # unit quaternion for pi radians rotation about global z-axis
-
-
-            elif body.get('name') == "long_link_body":
-                # size = float(body.get('size'))
-                body.set('pos', f'{-l_foot/2+a} 0 {h_f}') # this x,y,z position is w.r.t the foot reference frame
+        # Update foot position
+        if body.get('name') == "foot":
+            body.set('pos', f'0. 0 0')  # Position in global frame
+            body.set('quat', f'0 0 0 1')  # Unit quaternion
+            
+        # Update leg segment position
+        elif body.get('name') == "leg_segment":
+            body.set('pos', f'{-l_foot/2+a} 0 {h_f}')  # Position relative to foot frame
+            
+        # Update torso segment position
+        elif body.get('name') == "torso_segment":
+            body.set('pos', f'0 0 {l_leg}')  # Position at top of leg
 
     for joint in root.iter('joint'):
-            if joint.get('name') == "ankle_hinge":
-                joint.set("pos", f"0 0 0") # this x,y,z position is w.r.t the long_link_body reference frame
-
-            elif joint.get('name') == "rotation_dof":
-                joint.set('pos', f'{-l_foot/2+a} 0 {h_f}') # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
-
-            elif joint.get('name') == "joint_slide_x":
-                joint.set('pos', f"{-l_foot/2+a} 0 0.035") # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
-
-            elif joint.get('name') == "joint_slide_z":
-                joint.set('pos', f"{-l_foot/2+a} 0 0.035") # this x,y,z position is w.r.t the foot_body reference frame (aligns with world frame)
+        # Update ankle joint
+        if joint.get('name') == "ankle_hinge":
+            joint.set("pos", f"0 0 0")  # Position relative to leg segment
+            
+        # Update hip joint
+        elif joint.get('name') == "hip_hinge":
+            joint.set("pos", f"0 0 0")  # Position relative to torso segment
+            
+        # Update other joints
+        elif joint.get('name') == "rotation_dof":
+            joint.set('pos', f'{-l_foot/2+a} 0 {h_f}')
+            
+        elif joint.get('name') == "joint_slide_x":
+            joint.set('pos', f"{-l_foot/2+a} 0 0.035")
+            
+        elif joint.get('name') == "joint_slide_z":
+            joint.set('pos', f"{-l_foot/2+a} 0 0.035")
 
     for pair in root.iter('pair'):
         if pair.get('name') == "foot_ground_friction":
@@ -67,15 +90,7 @@ def set_geometry_params(root, m_feet, m_body, l_COM, l_foot, a, H_total, h_f, tr
 
     for site in root.iter('site'):
         if site.get('name') == "front_foot_site":
-            # site.set('pos', f"{-l_foot/2} 0 0.05")
             site.set('fromto', f"{-l_foot/2} 0 0.0 {-l_foot/2} 0 0.1")
-            # site.set('fromto', f"0 0 0.0 0 0 0.1")
-
+            
         elif site.get('name') == "back_foot_site":
-            # site.set('pos', f"{l_foot/2} 0 0.05")
             site.set('fromto', f"{l_foot/2} 0 0.0 {l_foot/2} 0 0.1")
-    # for opt in root.iter('option'):
-    #     if opt.get('name') == "gravity":
-    #         opt.set('')
-            # geom.set('mass', str(m_feet))
-            # mesh.set('vertex', f"{-l_foot/2} 0 0  {l_foot/2} 0 0  0 -0.035 0  0 0.035 0  {l_foot/2-a} 0 {h_f}")

@@ -37,6 +37,10 @@
     <material name="exo_blue" rgba="0.1 0.3 0.7 1" shininess="0.3" specular="0.3"/>
     <material name="exo_straps" rgba="0.3 0.3 0.3 1" shininess="0.1" specular="0.1"/>
 
+    <!-- Materials for distinguishing body segments -->
+    <material name="leg_material" rgba="0.6 0.6 0.4 1" shininess="0.1" specular="0.1"/>
+    <material name="torso_material" rgba="0.7 0.5 0.3 1" shininess="0.1" specular="0.1"/>
+
   </asset>
 
   <!-- SECTION TO DEFINE GEOMETRIES AND JOINTS -->
@@ -48,9 +52,14 @@
       <!-- ALL DEFAULT GEOMETRIES ARE CAPSULE TYPE -->
       <geom material="body" type="capsule" condim="1" friction="0.99 0.99 0.99" solimp=".9 .99 .003" group="1"/>
       
-      <!-- SHIN GEOMETRY -->
-      <default class="long_link">
-        <geom fromto="0 0 0.1 0 0 0" size = "0.025"/>
+      <!-- LEG GEOMETRY -->
+      <default class="leg_link">
+        <geom fromto="0 0 0 0 0 0.5" size="0.025" material="leg_material"/>
+      </default>
+
+      <!-- TORSO GEOMETRY -->
+      <default class="torso_link">
+        <geom fromto="0 0 0 0 0 0.6" size="0.03" material="torso_material"/>
       </default>
 
     </default>
@@ -80,12 +89,20 @@
           <geom name="exo_heel_attachment" type="box" size="0.02 0.025 0.005" pos="-0.1 0 0.005" 
                 material="exo_metal" contype="0" conaffinity="0"/>
       
-            <body name="long_link_body">
+            <body name="leg_segment">
             
             <!-- Create a hinge joint to constrain rotation around the y-axis -->
               <joint type="hinge" name="ankle_hinge" axis="0 1 0" damping="2.5"/>
-              <geom name="long_link_geom" class="long_link" solref="0.015 1" solimp=".99 .99 .001"/>
-              <geom name="m_body" type="sphere" size="0.05"/>
+              <geom name="leg_link_geom" class="leg_link" solref="0.015 1" solimp=".99 .99 .001"/>
+              <!-- Hip position will be at the top of the leg -->
+              <body name="torso_segment" pos="0 0 0.5">
+                <!-- Hip joint -->
+                <joint type="hinge" name="hip_hinge" axis="0 1 0" damping="3.0" range="-2.0 0.4"/>
+                <!-- Torso geometry -->
+                <geom name="torso_link_geom" class="torso_link" solref="0.015 1" solimp=".99 .99 .001"/>
+                <!-- Body center of mass - we'll put this mass in the middle of the torso -->
+                <geom name="m_body" type="sphere" size="0.05" pos="0 0 0.3"/>
+              </body>
 
               <!-- Exoskeleton components -->
               <!-- Main actuator housing -->
@@ -124,18 +141,22 @@
   
   <contact>
     <pair name="foot_ground_friction" geom1="foot_geom" geom2="ground" solref="0.015 1" solimp="0.99 .99 .003" friction=".99 .99 .99"/>
-    <pair name="longlink_ground_friction" geom1="long_link_geom" geom2="ground" solref="0.015 1" solimp="0.99 .99 .003" friction=".99 .99 .99"/>
+    <pair name="leg_ground_friction" geom1="leg_link_geom" geom2="ground" solref="0.015 1" solimp="0.99 .99 .003" friction=".99 .99 .99"/>
+    <pair name="torso_ground_friction" geom1="torso_link_geom" geom2="ground" solref="0.015 1" solimp="0.99 .99 .003" friction=".99 .99 .99"/>
   </contact>
 
     <!-- ACTUATORS FOR THE ANKLE JOINTS -->
 	<actuator>
-      <motor joint="ankle_hinge" name="human_ankle_actuator" gear="15" ctrlrange="-10 10" ctrllimited="true"/> 
+      <motor joint="ankle_hinge" name="human_ankle_actuator" gear="5" ctrlrange="-10 10" ctrllimited="true"/> 
       <motor joint="ankle_hinge" name="exo_ankle_actuator" gear="10" ctrlrange="-5 5" ctrllimited="true"/>
+      <!-- Adding a new hip actuator -->
+      <motor joint="hip_hinge" name="human_hip_actuator" gear="1" ctrlrange="-10 10" ctrllimited="true"/>
 	</actuator>
 
     <!-- SENSORS FOR THE ANKLE JOINTS -->
 	<sensor>
       <jointpos joint='ankle_hinge'/>
+      <jointpos joint='hip_hinge'/>
       <touch site='front_foot_site'/>
       <touch site='back_foot_site'/>
 	</sensor>

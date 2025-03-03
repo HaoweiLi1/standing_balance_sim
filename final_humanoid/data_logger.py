@@ -121,6 +121,7 @@ class DataLogger:
         """
         Create standard datasets used in ankle exo simulation.
         """
+        # Existing datasets
         self.create_dataset("human_torque", 2)  # time, torque
         self.create_dataset("exo_torque", 2)    # time, torque
         self.create_dataset("ankle_torque", 2)  # time, torque
@@ -133,3 +134,11 @@ class DataLogger:
         self.create_dataset("body_com", 4)        # time, x, y, z
         self.create_dataset("constraint_force", 5)  # time, f1, f2, f3, f4
         self.create_dataset("contact_force", 3)   # time, front, back
+        
+        # New datasets for hip joint
+        self.create_dataset("human_hip_torque", 2)  # time, torque
+        self.create_dataset("hip_joint_position", 2)  # time, position
+        self.create_dataset("hip_joint_velocity", 2)  # time, velocity
+        self.create_dataset("hip_goal_position", 2)   # time, goal
+        self.create_dataset("hip_gravity_torque", 2)  # time, torque
+        self.create_dataset("hip_control_torque", 2)  # time, torque

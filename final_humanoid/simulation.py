@@ -20,6 +20,7 @@ from renderer import MujocoRenderer
 from data_logger import DataLogger
 from data_plotter import DataPlotter
 from controllers import create_human_controller, create_exo_controller
+from controllers import HumanMultiJointController, HumanMultiJointLQRController, HumanCoordinatedController
 from perturbation import create_perturbation
 
 
@@ -72,10 +73,12 @@ class AnkleExoSimulation:
         self.model = None
         self.data = None
         self.ankle_joint_id = None
+        self.hip_joint_id = None  # Add hip joint ID
         self.human_body_id = None
         
         # Setpoints
         self.ankle_position_setpoint = self.config['ankle_position_setpoint_radians']
+        self.hip_position_setpoint = self.config.get('hip_position_setpoint_radians', 0.0)  # Add hip setpoint
         
         # Perturbation
         self.perturbation = None
@@ -95,16 +98,34 @@ class AnkleExoSimulation:
         
         # Prepare parameters for human controller
         human_params = {
-            'max_torque_df': human_config['max_torque_df'],
-            'max_torque_pf': human_config['max_torque_pf'],
+            'ankle_max_torque_df': human_config.get('max_torque_df', 43),
+            'ankle_max_torque_pf': human_config.get('max_torque_pf', -181),
+            'hip_max_torque_min': human_config.get('hip_max_torque_min', -150),
+            'hip_max_torque_max': human_config.get('hip_max_torque_max', 150),
             'mass': self.config['M_total'],
-            'leg_length': 0.575 * self.config['H_total'],
-            'mrtd_df': human_config.get('mrtd_df'),
-            'mrtd_pf': human_config.get('mrtd_pf')
+            'leg_length': 0.246 * self.config['H_total'],  # Updated leg length calculation
+            'torso_length': 0.5 * self.config['H_total'],  # Added torso length
+            'ankle_mrtd_df': human_config.get('mrtd_df'),
+            'ankle_mrtd_pf': human_config.get('mrtd_pf'),
+            'hip_mrtd_min': human_config.get('hip_mrtd_min', -400),
+            'hip_mrtd_max': human_config.get('hip_mrtd_max', 400)
         }
         
         # Add controller-specific parameters
-        if human_type == "LQR":
+        if human_type in ["MultiJointLQR", "Coordinated"]:
+            # Parameters for multi-joint controllers
+            multi_params = human_config.get('multi_joint_params', {})
+            human_params.update({
+                'Q_ankle_angle': multi_params.get('Q_ankle_angle', 5000),
+                'Q_ankle_velocity': multi_params.get('Q_ankle_velocity', 100),
+                'Q_hip_angle': multi_params.get('Q_hip_angle', 1000), 
+                'Q_hip_velocity': multi_params.get('Q_hip_velocity', 50),
+                'R_ankle': multi_params.get('R_ankle', 0.01),
+                'R_hip': multi_params.get('R_hip', 0.05),
+                'coordination_gain': multi_params.get('coordination_gain', 0.2)
+            })
+        # Add controller-specific parameters
+        elif human_type == "LQR":
             lqr_params = human_config['lqr_params']
             human_params.update({
                 'Q_angle': lqr_params['Q_angle'],
@@ -186,22 +207,50 @@ class AnkleExoSimulation:
 
     def controller(self, model, data):
         """Controller function for the leg."""
-        # Get current state
-        state = np.array([
-            data.sensordata[0],  # Joint angle
-            data.qvel[3]         # Joint velocity
+        # Get ankle state
+        ankle_state = np.array([
+            data.sensordata[0],  # Ankle joint angle
+            data.qvel[3]         # Ankle joint velocity
         ])
         
-        # Compute human control
-        human_torque = self.human_controller.compute_control(
-            state=state,
-            target=self.ankle_position_setpoint
-        )
-        data.ctrl[0] = human_torque
+        # Get hip state
+        hip_state = np.array([
+            data.sensordata[1],  # Hip joint angle (added in the XML)
+            data.qvel[4]         # Hip joint velocity
+        ])
+        
+        # Check if we're using a multi-joint controller
+        if hasattr(self.human_controller, 'compute_control') and callable(getattr(self.human_controller, 'compute_control')):
+            if isinstance(self.human_controller, (HumanMultiJointController, HumanMultiJointLQRController, HumanCoordinatedController)):
+                # Prepare states and targets for multi-joint controller
+                states = {
+                    'ankle': ankle_state,
+                    'hip': hip_state
+                }
+                targets = {
+                    'ankle': self.ankle_position_setpoint,
+                    'hip': self.hip_position_setpoint
+                }
+                
+                # Compute control for both joints
+                torques = self.human_controller.compute_control(states, targets)
+                
+                # Apply torques to respective joints
+                if 'ankle' in torques:
+                    data.ctrl[0] = torques['ankle']  # Human ankle torque
+                if 'hip' in torques:
+                    data.ctrl[2] = torques['hip']    # Human hip torque
+            else:
+                # Using a single-joint controller for ankle only
+                human_ankle_torque = self.human_controller.compute_control(
+                    state=ankle_state,
+                    target=self.ankle_position_setpoint
+                )
+                data.ctrl[0] = human_ankle_torque
         
         # Compute exo control
         exo_torque = self.exo_controller.compute_control(
-            state=state,
+            state=ankle_state,
             target=self.ankle_position_setpoint
         )
         data.ctrl[1] = exo_torque
@@ -218,21 +267,10 @@ class AnkleExoSimulation:
         # Prepare model parameters
         tree = ET.parse(xml_path)
         root = tree.getroot()
-        h_f, m_feet, m_body, l_COM, l_foot, a, self.K_p = calculate_kp_and_geom(M_total, H_total)
+        h_f, m_feet, m_legs, m_torso, l_leg, l_torso, l_COM_leg, l_COM_torso, l_foot, a= calculate_kp_and_geom(M_total, H_total)
         
         # Set geometry parameters (we always create the exoskeleton components in XML)
-        set_geometry_params(
-            root, 
-            m_feet, 
-            m_body, 
-            l_COM, 
-            l_foot, 
-            a, 
-            H_total, 
-            h_f, 
-            translation_friction_constant, 
-            rolling_friction_constant
-        )
+        set_geometry_params(root, m_feet, m_legs, m_torso, l_leg, l_torso, l_COM_leg, l_COM_torso, l_foot, a, H_total, h_f, translation_friction_constant, rolling_friction_constant)
 
         # Write modified model
         literature_model = self.config['lit_xml_file']
@@ -248,16 +286,21 @@ class AnkleExoSimulation:
         
         # Set initial conditions
         ankle_joint_initial_position = self.config['ankle_initial_position_radians']
+        hip_joint_initial_position = self.config['hip_initial_position_radians']
+
         self.data.qvel[0] = 0  # hinge joint at top of body
         self.data.qvel[1] = 0  # slide / prismatic joint at top of body in x direction
         self.data.qvel[2] = 0  # slide / prismatic joint at top of body in z direction
         self.data.qvel[3] = 0  # hinge joint at ankle
+        self.data.qvel[4] = 0  # hinge joint at hip
         self.data.qpos[0] = self.config['foot_angle_initial_position_radians']
         self.data.qpos[3] = ankle_joint_initial_position
+        self.data.qpos[4] = hip_joint_initial_position
         
         # Get important joint and body IDs
         self.ankle_joint_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
-        self.human_body_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_BODY, "long_link_body")
+        self.hip_joint_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, "hip_hinge")
+        self.human_body_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_BODY, "torso_segment")
         
         # Initialize controllers
         self.initialize_controllers(self.model, self.data)
@@ -309,26 +352,41 @@ class AnkleExoSimulation:
     def _log_simulation_data(self):
         """Log all simulation data for the current timestep."""
         # Extract actuator IDs
-        human_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "human_ankle_actuator")
-        exo_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "exo_ankle_actuator")
+        human_ankle_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "human_ankle_actuator")
+        exo_ankle_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "exo_ankle_actuator")
+        human_hip_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "human_hip_actuator")
         
-        # Get torque values
-        human_torque_executed = self.data.actuator_force[human_actuator_id] * 15
-        exo_torque_executed = self.data.actuator_force[exo_actuator_id] * 10
-        ankle_torque_executed = self.data.qfrc_actuator[self.ankle_joint_id]
-        gravity_torque = self.data.qfrc_bias[self.ankle_joint_id]
+        # Get ankle torque values
+        human_ankle_torque = self.data.actuator_force[human_ankle_actuator_id] * 15
+        exo_ankle_torque = self.data.actuator_force[exo_ankle_actuator_id] * 10
+        ankle_torque = self.data.qfrc_actuator[self.ankle_joint_id]
+        ankle_gravity_torque = self.data.qfrc_bias[self.ankle_joint_id]
+
+        # Get hip torque values
+        human_hip_torque = self.data.actuator_force[human_hip_actuator_id] * 20
+        hip_torque = self.data.qfrc_actuator[self.hip_joint_id]
+        hip_gravity_torque = self.data.qfrc_bias[self.hip_joint_id]
         
-        # Log all the data
-        self.logger.log_data("human_torque", np.array([self.data.time, human_torque_executed]))
-        self.logger.log_data("exo_torque", np.array([self.data.time, exo_torque_executed]))
-        self.logger.log_data("ankle_torque", np.array([self.data.time, ankle_torque_executed]))
-        self.logger.log_data("gravity_torque", np.array([self.data.time, gravity_torque]))
-        self.logger.log_data("control_torque", np.array([self.data.time, self.data.qfrc_actuator[self.ankle_joint_id]]))
+        # Log ankle data
+        self.logger.log_data("human_torque", np.array([self.data.time, human_ankle_torque]))
+        self.logger.log_data("exo_torque", np.array([self.data.time, exo_ankle_torque]))
+        self.logger.log_data("ankle_torque", np.array([self.data.time, ankle_torque]))
+        self.logger.log_data("gravity_torque", np.array([self.data.time, ankle_gravity_torque]))
+        self.logger.log_data("control_torque", np.array([self.data.time, ankle_torque]))
         
-        # Joint data
+        # Log hip data
+        self.logger.log_data("human_hip_torque", np.array([self.data.time, human_hip_torque]))
+        self.logger.log_data("hip_gravity_torque", np.array([self.data.time, hip_gravity_torque]))
+        self.logger.log_data("hip_control_torque", np.array([self.data.time, hip_torque]))
+        
+        # Log joint positions and velocities
         self.logger.log_data("joint_position", np.array([self.data.time, 180/np.pi*self.data.qpos[self.ankle_joint_id]]))
         self.logger.log_data("joint_velocity", np.array([self.data.time, 180/np.pi*self.data.qvel[self.ankle_joint_id]]))
         self.logger.log_data("goal_position", np.array([self.data.time, 180/np.pi*self.ankle_position_setpoint]))
+        
+        self.logger.log_data("hip_joint_position", np.array([self.data.time, 180/np.pi*self.data.qpos[self.hip_joint_id]]))
+        self.logger.log_data("hip_joint_velocity", np.array([self.data.time, 180/np.pi*self.data.qvel[self.hip_joint_id]]))
+        self.logger.log_data("hip_goal_position", np.array([self.data.time, 180/np.pi*self.hip_position_setpoint]))
         
         # Constraint and contact forces
         self.logger.log_data("constraint_force", np.array([
