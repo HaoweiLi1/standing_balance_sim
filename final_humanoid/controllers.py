@@ -25,10 +25,15 @@ class HumanController(Controller):
         self.max_torque_pf = max_torque_pf
         # Maximum rate of torque development limits if specified
         self.mrtd_df = mrtd_df
-        print(self.mrtd_df)
         self.mrtd_pf = mrtd_pf
-        print(self.mrtd_pf)
-        self.prev_torque = 0.0
+
+        ankle_joint_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
+        if ankle_joint_id >= 0:
+            # Attempt to initialize with static gravitational torque
+            mj.mj_forward(model, data)  # Update model state
+            self.prev_torque = data.qfrc_bias[ankle_joint_id] / self.gear_ratio
+        else:
+            self.prev_torque = 0.0
         self.current_rtd = 0.0     # Store the current RTD
         self.current_rtd_limit = 0.0  # Store the applied limit
 
@@ -65,6 +70,12 @@ class HumanController(Controller):
         self.current_rtd_limit = rtd_limit    
         limited_torque = self.prev_torque + delta_torque
 
+        # Add a safety check to ensure we're still respecting magnitude limits
+        limited_torque = np.clip(
+            limited_torque, 
+            self.max_torque_pf / self.gear_ratio, 
+            self.max_torque_df / self.gear_ratio
+        )
 
         self.prev_torque = limited_torque
         return limited_torque

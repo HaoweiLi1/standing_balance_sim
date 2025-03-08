@@ -273,13 +273,17 @@ class AnkleExoSimulation:
         self.model.opt.gravity = np.array([0, 0, self.config['gravity']])
         
         # Set initial conditions
-        ankle_joint_initial_position = self.config['ankle_initial_position_radians']
-        self.data.qvel[0] = 0  # hinge joint at top of body
-        self.data.qvel[1] = 0  # slide / prismatic joint at top of body in x direction
-        self.data.qvel[2] = 0  # slide / prismatic joint at top of body in z direction
-        self.data.qvel[3] = 0  # hinge joint at ankle
+
+        self.data.qvel[0] = self.config['foot_rotation_initial_velocity']  # hinge joint at top of body
+        self.data.qvel[1] = self.config['foot_x_initial_velocity']       # slide joint in x direction
+        self.data.qvel[2] = self.config['foot_z_initial_velocity']       # slide joint in z direction
+        self.data.qvel[3] = self.config['ankle_initial_velocity']         # hinge joint at ankle
+    
         self.data.qpos[0] = self.config['foot_angle_initial_position_radians']
-        self.data.qpos[3] = ankle_joint_initial_position
+        self.data.qpos[3] = self.config['ankle_initial_position_radians']
+
+        # Call forward to update derived quantities
+        mj.mj_forward(self.model, self.data)
         
         # Get important joint and body IDs
         self.ankle_joint_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
