@@ -1,7 +1,7 @@
 config:
   
   ankle_position_setpoint_radians: 0.0       # set the ankle joint setpoint in radians
-  ankle_initial_position_radians:  -0.05 #0.0872665             # set the initial ankle angle in radians
+  ankle_initial_position_radians:  -0.01 #0.0872665             # set the initial ankle angle in radians
 
   # # Initial velocities
   foot_rotation_initial_velocity: 0.0
@@ -65,10 +65,10 @@ config:
   # New controller configuration section
   controllers:
     human:
-      type: "LQR"  # Options: "LQR", "PD"
+      type: "LQR"  # Options: "LQR", "PD", "Precomputed"
       max_torque_df: 22    # Maximum dorsiflexion torque (Nm)
       max_torque_pf: -88  # Maximum plantarflexion torque (Nm)
-      mrtd_df: 128        # Maximum rate of torque development for dorsiflexion (Nm/s)
+      mrtd_df: 148        # Maximum rate of torque development for dorsiflexion (Nm/s)
       mrtd_pf: 389        # Maximum rate of torque development for plantarflexion (Nm/s)
       
       # LQR specific parameters
@@ -82,8 +82,13 @@ config:
         kp: 100          # Proportional gain
         kd: 10           # Derivative gain
     
+      # PD specific parameters
+      precomputed_params:
+        trajectory_file: "trajectory1.csv"
+        interpolation: "linear"            # Interpolation method (options: linear, nearest, cubic)
+
     exo:
-      type: "PD"         # Options: "PD", "None" 
+      type: "None"         # Options: "PD", "None" 
       max_torque: 50     # Maximum exo torque (Nm)
       
       # PD specific parameters

@@ -97,6 +97,10 @@ class AnkleExoSimulation:
         print(f"MRTD from config - DF: {human_config.get('mrtd_df')}, PF: {human_config.get('mrtd_pf')}")
         print(f"Human config keys: {list(human_config.keys())}")
 
+        # Get exo controller configuration
+        exo_config = self.config['controllers']['exo']
+        exo_type = exo_config['type']
+
         # Prepare parameters for human controller
         human_params = {
             'max_torque_df': human_config['max_torque_df'],
@@ -118,21 +122,44 @@ class AnkleExoSimulation:
                 'Q_velocity': lqr_params['Q_velocity'],
                 'R': lqr_params['R']
             })
+            # For LQR, also pass exo configuration if exo is enabled
+            if exo_type != "None":
+                human_params['exo_config'] = exo_config
+                
+                # Get the pre-calculated values from xml_utilities for dynamic gains
+                if exo_type == "PD" and exo_config.get('pd_params', {}).get('use_dynamic_gains', False):
+                    _, m_feet, m_body, l_COM, _, _, K_p = calculate_kp_and_geom(
+                        self.config['M_total'], 
+                        self.config['H_total']
+                    )
+                    
+                    # Calculate dynamic gains
+                    kp = K_p  # Already calculated as m_body * g * l_COM
+                    kd = 0.3 * np.sqrt(m_body * l_COM**2 * kp)
+                    
+                    # Pass dynamic gains to LQR controller
+                    human_params['dynamic_gains'] = {
+                        'kp': kp,
+                        'kd': kd
+                    }
+                    print(f"Passing exo dynamic gains to LQR - Kp: {kp:.2f}, Kd: {kd:.2f}")
         elif human_type == "PD":
             pd_params = human_config['pd_params']
             human_params.update({
                 'kp': pd_params['kp'],
                 'kd': pd_params['kd']
             })
+        elif human_type == "Precomputed":
+            human_params['precomputed_params'] = human_config.get('precomputed_params', {})
+            # Log information about the trajectory file
+            trajectory_file = human_params['precomputed_params'].get('trajectory_file')
+            if trajectory_file:
+                print(f"Using precomputed trajectory from: {trajectory_file}")
             
         # Create human controller using factory function
         self.human_controller = create_human_controller(
             human_type, model, data, human_params
         )
-        
-        # Get exo controller configuration
-        exo_config = self.config['controllers']['exo']
-        exo_type = exo_config['type']
         
         # Set show_exoskeleton flag based on controller type
         self.show_exoskeleton = exo_type != "None"
@@ -284,6 +311,8 @@ class AnkleExoSimulation:
 
         # Call forward to update derived quantities
         mj.mj_forward(self.model, self.data)
+
+        print(f"Initial ankle velocity: {self.data.qvel[3]}")
         
         # Get important joint and body IDs
         self.ankle_joint_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
@@ -295,6 +324,8 @@ class AnkleExoSimulation:
         # Setup controller callback
         if self.config['controller_flag']:
             mj.set_mjcb_control(self.controller)
+        
+        print(f"Initial ankle velocity: {self.data.qvel[3]}")
         
         print("Model initialized successfully")
 
