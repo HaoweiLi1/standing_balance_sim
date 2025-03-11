@@ -88,7 +88,7 @@ config:
         interpolation: "linear"            # Interpolation method (options: linear, nearest, cubic)
 
     exo:
-      type: "PD"         # Options: "PD", "None" 
+      type: "None"         # Options: "PD", "None" 
       max_torque: 50     # Maximum exo torque (Nm)
       
       # PD specific parameters
