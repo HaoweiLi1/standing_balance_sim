@@ -36,7 +36,7 @@ class DataLogger:
             name: Name of the dataset (used for filename when saving)
             columns: Number of columns in the dataset
         """
-        self.data_arrays[name] = np.empty((1, columns))
+        self.data_arrays[name] = np.empty((0, columns))
     
     def log_data(self, name, data_row):
         """
@@ -63,7 +63,8 @@ class DataLogger:
         """
         if name in self.data_arrays:
             filepath = os.path.join(self.run_dir, f"{name}.csv")
-            np.savetxt(filepath, self.data_arrays[name][1:], delimiter=delimiter, fmt=fmt)
+            # np.savetxt(filepath, self.data_arrays[name][1:], delimiter=delimiter, fmt=fmt)
+            np.savetxt(filepath, self.data_arrays[name], delimiter=delimiter, fmt=fmt)
             print(f"Saved dataset '{name}' to {filepath}")
         else:
             print(f"Warning: Dataset '{name}' not found")
@@ -91,7 +92,8 @@ class DataLogger:
             or None if the dataset doesn't exist
         """
         if name in self.data_arrays:
-            return self.data_arrays[name][1:]  # Skip the first empty row
+            # return self.data_arrays[name][1:]  # Skip the first empty row
+            return self.data_arrays[name]  # Return the full array, not sliced
         return None
     
     def save_config(self, config):

@@ -1,13 +1,13 @@
 config:
   
   ankle_position_setpoint_radians: 0.0       # set the ankle joint setpoint in radians
-  ankle_initial_position_radians:  -0.01 #0.0872665             # set the initial ankle angle in radians
+  ankle_initial_position_radians:  -0.02 #0.0872665             # set the initial ankle angle in radians
 
   # # Initial velocities
   foot_rotation_initial_velocity: 0.0
   foot_x_initial_velocity: 0.0
   foot_z_initial_velocity: 0.0
-  ankle_initial_velocity: 0.0  # Example: Set initial ankle velocity to 0.2 rad/s
+  ankle_initial_velocity: 0.3  # Example: Set initial ankle velocity to 0.2 rad/s
 
   foot_angle_initial_position_radians: 0                # set the initial angle of the foot
   simend: 5                                           # set the duration for which the simulation will run
@@ -84,11 +84,11 @@ config:
     
       # PD specific parameters
       precomputed_params:
-        trajectory_file: "trajectory1.csv"
+        trajectory_file: "ankle_torque_trajectory.csv"
         interpolation: "linear"            # Interpolation method (options: linear, nearest, cubic)
 
     exo:
-      type: "None"         # Options: "PD", "None" 
+      type: "PD"         # Options: "PD", "None" 
       max_torque: 50     # Maximum exo torque (Nm)
       
       # PD specific parameters

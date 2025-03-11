@@ -110,7 +110,7 @@ class HumanPrecomputedController(HumanController):
                 raise ValueError(f"CSV file must have at least 2 columns (time, torque). Found {self.curve_data.shape[1]} columns.")
                 
             self.time_values = self.curve_data[:, 0]
-            self.torque_values = self.curve_data[:, 1]
+            self.torque_values = self.curve_data[:, 1] / self.gear_ratio
             
             # Verify time values are increasing
             if not np.all(np.diff(self.time_values) >= 0):
@@ -160,9 +160,10 @@ class HumanPrecomputedController(HumanController):
         # Apply limits
         torque = self.apply_torque_limits(torque)
         
-        # Apply rate of torque development limits if enabled
-        if self.mrtd_df is not None and self.mrtd_pf is not None:
-            torque = self.apply_mrtd_limits(torque, self.model.opt.timestep)
+        # Store the current torque for reference (no limits applied)
+        self.prev_torque = torque
+        self.current_rtd = 0.0
+        self.current_rtd_limit = float('inf')
         
         return torque
 
@@ -191,7 +192,7 @@ class HumanLQRController(HumanController):
         
         # Default LQR weights if not specified
         if Q is None:
-            Q = np.diag([5000, 100])
+            Q = np.diag([4000, 400])
         if R is None:
             R = np.array([[0.01]])
             

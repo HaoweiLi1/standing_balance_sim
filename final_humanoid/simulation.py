@@ -19,7 +19,7 @@ from xml_utilities import calculate_kp_and_geom, set_geometry_params
 from renderer import MujocoRenderer
 from data_logger import DataLogger
 from data_plotter import DataPlotter
-from controllers import create_human_controller, create_exo_controller
+from controllers import create_human_controller, create_exo_controller, HumanLQRController
 from perturbation import create_perturbation
 
 
@@ -105,7 +105,7 @@ class AnkleExoSimulation:
         human_params = {
             'max_torque_df': human_config['max_torque_df'],
             'max_torque_pf': human_config['max_torque_pf'],
-            'mass': self.config['M_total'],
+            'mass': self.config['M_total'] - 2*0.0145*self.config['M_total'],
             'leg_length': 0.575 * self.config['H_total'],
             'mrtd_df': human_config.get('mrtd_df'),
             'mrtd_pf': human_config.get('mrtd_pf')
@@ -161,6 +161,45 @@ class AnkleExoSimulation:
             human_type, model, data, human_params
         )
         
+        # # After creating the human_controller
+        # if isinstance(self.human_controller, HumanLQRController):
+        #     # Get parameters from the controller
+        #     m_body = self.human_controller.m
+        #     l_COM = self.human_controller.l
+        #     gravity = self.human_controller.g
+        #     damping = self.human_controller.b
+        #     I = self.human_controller.I
+
+            
+        #     # Create matrices
+        #     A = np.array([[0, 1],
+        #                     [m_body*gravity*l_COM/I, -damping/I]])
+        #     B = np.array([[0],
+        #                     [1/I]])
+
+        #     # Print COM values
+        #     print("=== MuJoCo Center of Mass Calculations ===")
+        #     print(f"Total height: {self.config['H_total']:.4f} m")
+        #     print(f"Static COM height: {l_COM:.4f} m")
+        #     print(f"Static moment of inertia: {I:.4f} kg·m²")
+        #     print()
+            
+        #     # Print matrices
+        #     print("=== MuJoCo System Matrices ===")
+        #     print("A matrix (static):")
+        #     print(f"[{A[0,0]:.8f}, {A[0,1]:.8f};")
+        #     print(f" {A[1,0]:.8f}, {A[1,1]:.8f}]")
+            
+        #     print("\nB matrix (static):")
+        #     print(f"[{B[0,0]:.8f};")
+        #     print(f" {B[1,0]:.8f}]")
+            
+        #     # Print the actual LQR gain matrix
+        #     print("\nComputed LQR gain matrix K:")
+        #     K = self.human_controller.K
+        #     print(f"[{K[0,0]:.8f}, {K[0,1]:.8f}]")
+        #     print()
+
         # Set show_exoskeleton flag based on controller type
         self.show_exoskeleton = exo_type != "None"
         
@@ -362,13 +401,20 @@ class AnkleExoSimulation:
         
         # Initialize model, renderer, and perturbation
         self.initialize_model()
+
+        # Log initial state at t=0 before any physics steps
+        self._log_simulation_data()
+
         self.initialize_renderer()
         self.initialize_perturbation()
         
         print(f"Simulation duration: {self.config['simend']} seconds")
         
-    def _log_simulation_data(self):
+    def _log_simulation_data(self, custom_time=None):
         """Log all simulation data for the current timestep."""
+
+        # Use custom time if provided, otherwise use simulation time
+        time_value = custom_time if custom_time is not None else self.data.time
         # Extract actuator IDs
         human_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "human_ankle_actuator")
         exo_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "exo_ankle_actuator")
@@ -380,7 +426,10 @@ class AnkleExoSimulation:
         gravity_torque = self.data.qfrc_bias[self.ankle_joint_id]
         
         # Log all the data
-        self.logger.log_data("human_torque", np.array([self.data.time, human_torque_executed]))
+        # self.logger.log_data("human_torque", np.array([self.data.time, human_torque_executed]))
+        # Log all the data with the precise time
+        self.logger.log_data("human_torque", np.array([time_value, human_torque_executed]))
+
         self.logger.log_data("exo_torque", np.array([self.data.time, exo_torque_executed]))
         self.logger.log_data("ankle_torque", np.array([self.data.time, ankle_torque_executed]))
         self.logger.log_data("gravity_torque", np.array([self.data.time, gravity_torque]))
@@ -461,24 +510,66 @@ class AnkleExoSimulation:
     def run(self):
         """Run the simulation."""
         simend = self.config['simend']
+
+        timestep = self.config['simulation_timestep']
+
+        # Log initial state at t=0
+        self._log_simulation_data(custom_time=0.0)
+
+        current_time = 0.0
         
         start_time = time.time()
         
+        # # Main simulation loop with visualization
+        # if self.renderer:
+        #     while not self.renderer.window_should_close():
+        #         simstart = self.data.time
+                
+        #         # Run physics at a higher rate than rendering (60 fps)
+        #         while (self.data.time - simstart < 1.0/60.0):
+        #             self._simulation_step()
+                    
+        #             # Check if simulation time exceeded
+        #             if self.data.time >= simend:
+        #                 break
+                
+        #         # Check if simulation time exceeded
+        #         if self.data.time >= simend:
+        #             break
+                    
+        #         # Render the current state
+        #         self.renderer.render(self.model, self.data)
+        
+        # # Without visualization - run the simulation faster
+        # else:
+        #     while self.data.time < simend:
+        #         self._simulation_step()
+        
+        # print(f"Simulation completed in {time.time() - start_time:.2f} seconds")
+
         # Main simulation loop with visualization
         if self.renderer:
             while not self.renderer.window_should_close():
-                simstart = self.data.time
+                # Run a fixed number of physics steps before rendering (for 60 fps)
+                render_interval = 1.0/60.0
+                steps_per_render = max(1, int(render_interval / timestep))
                 
-                # Run physics at a higher rate than rendering (60 fps)
-                while (self.data.time - simstart < 1.0/60.0):
-                    self._simulation_step()
+                for _ in range(steps_per_render):
+                    # Step physics
+                    mj.mj_step(self.model, self.data)
+                    
+                    # Update precise time tracking
+                    current_time += timestep
+                    
+                    # Log data with the precise time value
+                    self._log_simulation_data(custom_time=current_time)
                     
                     # Check if simulation time exceeded
-                    if self.data.time >= simend:
+                    if current_time >= simend:
                         break
                 
                 # Check if simulation time exceeded
-                if self.data.time >= simend:
+                if current_time >= simend:
                     break
                     
                 # Render the current state
@@ -486,8 +577,15 @@ class AnkleExoSimulation:
         
         # Without visualization - run the simulation faster
         else:
-            while self.data.time < simend:
-                self._simulation_step()
+            while current_time < simend:
+                # Step physics
+                mj.mj_step(self.model, self.data)
+                
+                # Update precise time tracking
+                current_time += timestep
+                
+                # Log data with the precise time value
+                self._log_simulation_data(custom_time=current_time)
         
         print(f"Simulation completed in {time.time() - start_time:.2f} seconds")
         
