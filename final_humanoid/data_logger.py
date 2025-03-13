@@ -52,7 +52,7 @@ class DataLogger:
         
         self.data_arrays[name] = np.vstack((self.data_arrays[name], data_row))
     
-    def save_dataset(self, name, delimiter=",", fmt="%.3f"):
+    def save_dataset(self, name, delimiter=",", fmt="%.4f"):
         """
         Save a specific dataset to a CSV file.
         
@@ -63,13 +63,12 @@ class DataLogger:
         """
         if name in self.data_arrays:
             filepath = os.path.join(self.run_dir, f"{name}.csv")
-            # np.savetxt(filepath, self.data_arrays[name][1:], delimiter=delimiter, fmt=fmt)
-            np.savetxt(filepath, self.data_arrays[name], delimiter=delimiter, fmt=fmt)
+            np.savetxt(filepath, self.data_arrays[name][1:], delimiter=delimiter, fmt=fmt)
             print(f"Saved dataset '{name}' to {filepath}")
         else:
             print(f"Warning: Dataset '{name}' not found")
     
-    def save_all(self, delimiter=",", fmt="%.3f"):
+    def save_all(self, delimiter=",", fmt="%.4f"):
         """
         Save all datasets to CSV files.
         

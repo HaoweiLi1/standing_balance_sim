@@ -401,9 +401,13 @@ class AnkleExoSimulation:
         
         # Initialize model, renderer, and perturbation
         self.initialize_model()
-
+        original_time = self.data.time
+        self.data.time = 0.0
         # Log initial state at t=0 before any physics steps
         self._log_simulation_data()
+
+        # Restore original time
+        self.data.time = original_time
 
         self.initialize_renderer()
         self.initialize_perturbation()
@@ -472,17 +476,21 @@ class AnkleExoSimulation:
         if not perturbation_queue.empty():
             x_perturbation = perturbation_queue.get()
             self.data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
-            self.logger.log_data("perturbation", np.array([self.data.time, x_perturbation]))
+
         else:
             self.data.xfrc_applied[2] = [0, 0, 0, 0., 0., 0.]
-            self.logger.log_data("perturbation", np.array([self.data.time, 0.]))
 
         # Step physics
         mj.mj_step(self.model, self.data)
         
+        if not perturbation_queue.empty():
+            self.logger.log_data("perturbation", np.array([self.data.time, x_perturbation]))
+        else:
+            self.logger.log_data("perturbation", np.array([self.data.time, 0.]))
+
         # Log data
         self._log_simulation_data()
-        
+            
     def _generate_plots(self):
         """Generate plots from the collected data."""
         print("Generating plots...")
@@ -511,65 +519,30 @@ class AnkleExoSimulation:
         """Run the simulation."""
         simend = self.config['simend']
 
-        timestep = self.config['simulation_timestep']
-
-        # Log initial state at t=0
-        self._log_simulation_data(custom_time=0.0)
-
-        current_time = 0.0
+        # Record initial state at t=0 before any physics steps
+        original_time = self.data.time  # Save current time
+        self.data.time = 0.0           # Explicitly set to t=0
+        self._log_simulation_data()    # Log initial state
+        self.data.time = original_time # Restore original time
         
         start_time = time.time()
         
-        # # Main simulation loop with visualization
-        # if self.renderer:
-        #     while not self.renderer.window_should_close():
-        #         simstart = self.data.time
-                
-        #         # Run physics at a higher rate than rendering (60 fps)
-        #         while (self.data.time - simstart < 1.0/60.0):
-        #             self._simulation_step()
-                    
-        #             # Check if simulation time exceeded
-        #             if self.data.time >= simend:
-        #                 break
-                
-        #         # Check if simulation time exceeded
-        #         if self.data.time >= simend:
-        #             break
-                    
-        #         # Render the current state
-        #         self.renderer.render(self.model, self.data)
-        
-        # # Without visualization - run the simulation faster
-        # else:
-        #     while self.data.time < simend:
-        #         self._simulation_step()
-        
-        # print(f"Simulation completed in {time.time() - start_time:.2f} seconds")
-
         # Main simulation loop with visualization
         if self.renderer:
             while not self.renderer.window_should_close():
-                # Run a fixed number of physics steps before rendering (for 60 fps)
-                render_interval = 1.0/60.0
-                steps_per_render = max(1, int(render_interval / timestep))
+                simstart = self.data.time
                 
-                for _ in range(steps_per_render):
-                    # Step physics
-                    mj.mj_step(self.model, self.data)
-                    
-                    # Update precise time tracking
-                    current_time += timestep
-                    
-                    # Log data with the precise time value
-                    self._log_simulation_data(custom_time=current_time)
+                # Run physics at a higher rate than rendering (60 fps)
+                while (self.data.time - simstart < 1.0/60.0):
+                    # Step physics and record data
+                    self._simulation_step()
                     
                     # Check if simulation time exceeded
-                    if current_time >= simend:
+                    if self.data.time >= simend:
                         break
                 
                 # Check if simulation time exceeded
-                if current_time >= simend:
+                if self.data.time >= simend:
                     break
                     
                 # Render the current state
@@ -577,15 +550,8 @@ class AnkleExoSimulation:
         
         # Without visualization - run the simulation faster
         else:
-            while current_time < simend:
-                # Step physics
-                mj.mj_step(self.model, self.data)
-                
-                # Update precise time tracking
-                current_time += timestep
-                
-                # Log data with the precise time value
-                self._log_simulation_data(custom_time=current_time)
+            while self.data.time < simend:
+                self._simulation_step()
         
         print(f"Simulation completed in {time.time() - start_time:.2f} seconds")
         

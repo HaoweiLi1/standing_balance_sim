@@ -20,7 +20,7 @@ config:
   rolling_friction_constant: 0.99                       # set the rolling friction constant for model geoms
   xml_path: 'initial_humanoid.xml'                      # set the file path that the run_sim.py script will read and modify with literature estimates
   lit_xml_file: 'literature_humanoid.xml'               # set file path that run_sim.py will save literature estimate XML file too; this is loaded into the MuJoCo backend
-  plotter_flag: True                                 # toggle the Python plotters on / off
+  plotter_flag: False                                 # toggle the Python plotters on / off
   simulation_timestep: 0.0005     #0.0001               # set the simulation timestep - this attribute is critical to simulation success
   visualization_flag: True  # Enable/disable MuJoCo 3D visualization
   visualize_contact_force: False                         # toggle on / off to visualize contact forces
