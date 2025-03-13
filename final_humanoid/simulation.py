@@ -359,8 +359,6 @@ class AnkleExoSimulation:
         
         # Initialize controllers
         self.initialize_controllers(self.model, self.data)
-
-        mj.mj_forward(self.model, self.data)
         
         # Setup controller callback
         if self.config['controller_flag']:
@@ -481,10 +479,6 @@ class AnkleExoSimulation:
 
         else:
             self.data.xfrc_applied[2] = [0, 0, 0, 0., 0., 0.]
-
-        # Ensure controller is called for the first step
-        if self.data.time == 0:
-            self.controller(self.model, self.data)
 
         # Step physics
         mj.mj_step(self.model, self.data)
