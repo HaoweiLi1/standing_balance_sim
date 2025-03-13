@@ -23,8 +23,8 @@ mrtd_df = 148;                  % Maximum rate of torque development for dorsifl
 mrtd_pf = 389;                  % Maximum rate of torque development for plantarflexion (Nm/s)
 
 % Initial conditions (from config.yaml)
-ankle_position_initial = -0.01; % Initial ankle angle (rad)
-ankle_velocity_initial = 0.0;   % Initial ankle velocity (rad/s)
+ankle_position_initial = -0.02; % Initial ankle angle (rad)
+ankle_velocity_initial = 0.3;   % Initial ankle velocity (rad/s)
 
 % Target position (from config.yaml)
 ankle_position_setpoint = 0.0;  % Target ankle position (rad)
