@@ -7,10 +7,10 @@ config:
   foot_rotation_initial_velocity: 0.0
   foot_x_initial_velocity: 0.0
   foot_z_initial_velocity: 0.0
-  ankle_initial_velocity: 0.3  # Example: Set initial ankle velocity to 0.2 rad/s
+  ankle_initial_velocity: 0.2  # Example: Set initial ankle velocity to 0.2 rad/s
 
   foot_angle_initial_position_radians: 0                # set the initial angle of the foot
-  simend: 5                                           # set the duration for which the simulation will run
+  simend: 10                                           # set the duration for which the simulation will run
   M_total: 60                                           # total mass of the human, used for literature estimate calculations
   H_total: 1.59                                         # total height of the human, used for literature estimtae calculations
   mp4_file_name: 'pert_with_contact_force_vis.mp4'      # file name for mp4 file to be saved to, if you want to record the simultation rendering
@@ -65,7 +65,7 @@ config:
   # New controller configuration section
   controllers:
     human:
-      type: "LQR"  # Options: "LQR", "PD", "Precomputed"
+      type: "Precomputed"  # Options: "LQR", "PD", "Precomputed"
       max_torque_df: 22    # Maximum dorsiflexion torque (Nm)
       max_torque_pf: -88  # Maximum plantarflexion torque (Nm)
       mrtd_df: 148        # Maximum rate of torque development for dorsiflexion (Nm/s)

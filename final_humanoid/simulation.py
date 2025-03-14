@@ -160,45 +160,6 @@ class AnkleExoSimulation:
         self.human_controller = create_human_controller(
             human_type, model, data, human_params
         )
-        
-        # # After creating the human_controller
-        # if isinstance(self.human_controller, HumanLQRController):
-        #     # Get parameters from the controller
-        #     m_body = self.human_controller.m
-        #     l_COM = self.human_controller.l
-        #     gravity = self.human_controller.g
-        #     damping = self.human_controller.b
-        #     I = self.human_controller.I
-
-            
-        #     # Create matrices
-        #     A = np.array([[0, 1],
-        #                     [m_body*gravity*l_COM/I, -damping/I]])
-        #     B = np.array([[0],
-        #                     [1/I]])
-
-        #     # Print COM values
-        #     print("=== MuJoCo Center of Mass Calculations ===")
-        #     print(f"Total height: {self.config['H_total']:.4f} m")
-        #     print(f"Static COM height: {l_COM:.4f} m")
-        #     print(f"Static moment of inertia: {I:.4f} kg·m²")
-        #     print()
-            
-        #     # Print matrices
-        #     print("=== MuJoCo System Matrices ===")
-        #     print("A matrix (static):")
-        #     print(f"[{A[0,0]:.8f}, {A[0,1]:.8f};")
-        #     print(f" {A[1,0]:.8f}, {A[1,1]:.8f}]")
-            
-        #     print("\nB matrix (static):")
-        #     print(f"[{B[0,0]:.8f};")
-        #     print(f" {B[1,0]:.8f}]")
-            
-        #     # Print the actual LQR gain matrix
-        #     print("\nComputed LQR gain matrix K:")
-        #     K = self.human_controller.K
-        #     print(f"[{K[0,0]:.8f}, {K[0,1]:.8f}]")
-        #     print()
 
         # Set show_exoskeleton flag based on controller type
         self.show_exoskeleton = exo_type != "None"
@@ -339,7 +300,6 @@ class AnkleExoSimulation:
         self.model.opt.gravity = np.array([0, 0, self.config['gravity']])
         
         # Set initial conditions
-
         self.data.qvel[0] = self.config['foot_rotation_initial_velocity']  # hinge joint at top of body
         self.data.qvel[1] = self.config['foot_x_initial_velocity']       # slide joint in x direction
         self.data.qvel[2] = self.config['foot_z_initial_velocity']       # slide joint in z direction
@@ -360,9 +320,10 @@ class AnkleExoSimulation:
         # Initialize controllers
         self.initialize_controllers(self.model, self.data)
         
-        # Setup controller callback
-        if self.config['controller_flag']:
-            mj.set_mjcb_control(self.controller)
+        # MODIFIED: Remove the MuJoCo control callback setup
+        # We will manually call the controller before each step
+        # if self.config['controller_flag']:
+        #     mj.set_mjcb_control(self.controller)
         
         print(f"Initial ankle velocity: {self.data.qvel[3]}")
         
@@ -429,11 +390,8 @@ class AnkleExoSimulation:
         ankle_torque_executed = self.data.qfrc_actuator[self.ankle_joint_id]
         gravity_torque = self.data.qfrc_bias[self.ankle_joint_id]
         
-        # Log all the data
-        # self.logger.log_data("human_torque", np.array([self.data.time, human_torque_executed]))
         # Log all the data with the precise time
         self.logger.log_data("human_torque", np.array([time_value, human_torque_executed]))
-
         self.logger.log_data("exo_torque", np.array([self.data.time, exo_torque_executed]))
         self.logger.log_data("ankle_torque", np.array([self.data.time, ankle_torque_executed]))
         self.logger.log_data("gravity_torque", np.array([self.data.time, gravity_torque]))
@@ -476,19 +434,24 @@ class AnkleExoSimulation:
         if not perturbation_queue.empty():
             x_perturbation = perturbation_queue.get()
             self.data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
-
         else:
             self.data.xfrc_applied[2] = [0, 0, 0, 0., 0., 0.]
 
-        # Step physics
-        mj.mj_step(self.model, self.data)
-        
+        # MODIFIED: First compute control based on current state
+        # This ensures we're using the apply-then-step pattern like MATLAB
+        if self.config['controller_flag']:
+            self.controller(self.model, self.data)
+            
+        # Log perturbation before stepping
         if not perturbation_queue.empty():
             self.logger.log_data("perturbation", np.array([self.data.time, x_perturbation]))
         else:
             self.logger.log_data("perturbation", np.array([self.data.time, 0.]))
 
-        # Log data
+        # Step physics (now using the torque we just computed)
+        mj.mj_step(self.model, self.data)
+        
+        # Log data after stepping
         self._log_simulation_data()
             
     def _generate_plots(self):
@@ -522,8 +485,19 @@ class AnkleExoSimulation:
         # Record initial state at t=0 before any physics steps
         original_time = self.data.time  # Save current time
         self.data.time = 0.0           # Explicitly set to t=0
+
+        if self.config['controller_flag']:
+            self.controller(self.model, self.data)
+        
+        # -- (2) Optionally do a forward pass so MuJoCo sees the new ctrl
+        mj.mj_forward(self.model, self.data)
+
         self._log_simulation_data()    # Log initial state
         self.data.time = original_time # Restore original time
+        
+        # # Apply initial control before any steps occur
+        # if self.config['controller_flag']:
+        #     self.controller(self.model, self.data)
         
         start_time = time.time()
         
