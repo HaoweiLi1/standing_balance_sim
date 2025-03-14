@@ -7,7 +7,7 @@ clc;
 M_total = 60;                   % Total mass (kg)
 H_total = 1.59;                 % Total height (m)
 timestep = 0.0005;              % Simulation timestep (s)
-sim_duration = 10;               % Simulation duration (s)
+sim_duration = 5;               % Simulation duration (s)
 gravity = 9.81;                 % Gravity (m/s²)
 damping = 2.5;                  % Joint damping (from MuJoCo model)
 
@@ -142,24 +142,24 @@ csv_filename = 'ankle_torque_trajectory.csv';
 writematrix(torque_data, csv_filename);
 fprintf('Torque trajectory saved to: %s\n', csv_filename);
 
-%% Export complete trajectory to CSV
-% Convert position and velocity from radians to degrees to match data_logger.py
-position_deg = x(1,:) * 180/pi;
-velocity_deg = x(2,:) * 180/pi;
-
-% Create a table with time, torque, position (deg) and velocity (deg/s)
-trajectory_data = [t' human_torque' position_deg' velocity_deg'];
-
-% Save complete trajectory to CSV file
-full_trajectory_filename = 'ankle_complete_trajectory.csv';
-writematrix(trajectory_data, full_trajectory_filename);
-fprintf('Complete trajectory (time, torque, position[deg], velocity[deg/s]) saved to: %s\n', full_trajectory_filename);
-
-% Keep the original torque-only file for backward compatibility
-csv_filename = 'ankle_torque_trajectory.csv';
-torque_data = [t' human_torque'];
-writematrix(torque_data, csv_filename);
-fprintf('Torque trajectory saved to: %s\n', csv_filename);
+% %% Export complete trajectory to CSV
+% % Convert position and velocity from radians to degrees to match data_logger.py
+% position_deg = x(1,:) * 180/pi;
+% velocity_deg = x(2,:) * 180/pi;
+% 
+% % Create a table with time, torque, position (deg) and velocity (deg/s)
+% trajectory_data = [t' human_torque' position_deg' velocity_deg'];
+% 
+% % Save complete trajectory to CSV file
+% full_trajectory_filename = 'ankle_complete_trajectory.csv';
+% writematrix(trajectory_data, full_trajectory_filename);
+% fprintf('Complete trajectory (time, torque, position[deg], velocity[deg/s]) saved to: %s\n', full_trajectory_filename);
+% 
+% % Keep the original torque-only file for backward compatibility
+% csv_filename = 'ankle_torque_trajectory.csv';
+% torque_data = [t' human_torque'];
+% writematrix(torque_data, csv_filename);
+% fprintf('Torque trajectory saved to: %s\n', csv_filename);
 %% Visualization
 figure('Position', [100, 100, 1200, 800]);
 

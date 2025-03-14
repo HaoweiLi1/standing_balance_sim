@@ -91,7 +91,12 @@ class HumanPrecomputedController(HumanController):
         
         # Get trajectory file path from precomputed_params
         self.trajectory_file = precomputed_params.get('trajectory_file', 'trajectory.csv')
-        self.interpolation = precomputed_params.get('interpolation', 'linear')
+        
+        # Flag to enable one-step look-ahead (compensate for MuJoCo control delay)
+        self.use_time_offset = True
+        
+        # Track if this is the first control step
+        self.first_step = True
         
         # Load precomputed curve from file
         try:
@@ -108,64 +113,403 @@ class HumanPrecomputedController(HumanController):
             # Verify data format
             if self.curve_data.shape[1] < 2:
                 raise ValueError(f"CSV file must have at least 2 columns (time, torque). Found {self.curve_data.shape[1]} columns.")
-                
-            self.time_values = self.curve_data[:, 0]
-            self.torque_values = self.curve_data[:, 1] / self.gear_ratio
             
-            # Verify time values are increasing
-            if not np.all(np.diff(self.time_values) >= 0):
-                raise ValueError("Time values in CSV must be monotonically increasing.")
+            # Store the first torque value for special initial handling
+            self.initial_torque = self.curve_data[0, 1] / self.gear_ratio
+            
+            # Create a direct time-to-torque mapping for faster lookup
+            self.torque_map = {}
+            for i in range(len(self.curve_data)):
+                time_val = self.curve_data[i, 0]
+                torque_val = self.curve_data[i, 1] / self.gear_ratio
+                self.torque_map[round(time_val, 6)] = torque_val
+            
+            # Store min/max time values for bound checking
+            self.min_time = self.curve_data[0, 0]
+            self.max_time = self.curve_data[-1, 0]
+            
+            # Calculate the time step in the data
+            time_diffs = np.diff(self.curve_data[:, 0])
+            self.avg_time_step = np.mean(time_diffs)
+            time_step_std = np.std(time_diffs)
+            
+            # Get the model timestep
+            self.model_timestep = model.opt.timestep
+            
+            print(f"Successfully loaded trajectory with {len(self.torque_map)} points.")
+            print(f"Time range: [{self.min_time:.6f}, {self.max_time:.6f}] s")
+            print(f"Initial torque value: {self.initial_torque:.6f} Nm")
+            print(f"Average time step in data: {self.avg_time_step:.6f} s (std: {time_step_std:.6f} s)")
+            print(f"Model time step: {self.model_timestep:.6f} s")
+            print(f"Time offset (look-ahead) enabled: {self.use_time_offset}")
+            print(f"Special first step handling enabled")
+            
+            # Check if time steps are consistent
+            if time_step_std > 1e-6:
+                print("Warning: Time steps in the CSV file are not uniform. This may cause inaccuracies.")
                 
-            print(f"Successfully loaded trajectory with {len(self.time_values)} points. " 
-                  f"Time range: [{self.time_values[0]:.3f}, {self.time_values[-1]:.3f}] s")
+            # Compare with model time step
+            if abs(self.avg_time_step - self.model_timestep) > 1e-6:
+                print(f"Warning: CSV time step ({self.avg_time_step:.6f} s) differs from model time step ({self.model_timestep:.6f} s).")
+                print("This may cause timing mismatches when applying the precomputed torques.")
             
         except Exception as e:
             print(f"Error loading control curve: {e}")
-            # Create a fallback empty curve
-            self.time_values = np.array([0, 1])
-            self.torque_values = np.array([0, 0])
+            # Create a fallback empty dictionary
+            self.torque_map = {0.0: 0.0, 1.0: 0.0}
+            self.min_time = 0.0
+            self.max_time = 1.0
+            self.avg_time_step = 0.001
+            self.model_timestep = 0.001
+            self.initial_torque = 0.0
             print("Using fallback zero control curve")
         
     def compute_control(self, state, target):
-        """Use the precomputed torque value for the current time."""
+        """
+        Use the precomputed torque value with special handling for the initial state.
+        """
         # Get current time
         current_time = self.data.time
         
-        # Find torque value using interpolation
-        if current_time <= self.time_values[-1]:
-            if self.interpolation == 'linear':
-                # Use numpy's interp function for linear interpolation
-                torque = np.interp(current_time, self.time_values, self.torque_values)
-            elif self.interpolation == 'nearest':
-                # Find nearest index
-                idx = np.abs(self.time_values - current_time).argmin()
-                torque = self.torque_values[idx]
-            elif self.interpolation == 'cubic' and len(self.time_values) >= 4:
-                # Use cubic interpolation if scipy is available and we have enough points
-                try:
-                    from scipy.interpolate import interp1d
-                    cubic_interp = interp1d(self.time_values, self.torque_values, kind='cubic')
-                    torque = float(cubic_interp(current_time))
-                except ImportError:
-                    # Fall back to linear if scipy not available
-                    torque = np.interp(current_time, self.time_values, self.torque_values)
-            else:
-                # Default to linear for any other case
-                torque = np.interp(current_time, self.time_values, self.torque_values)
+        # Special handling for the first control step
+        if self.first_step:
+            torque = self.initial_torque
+            print(f"First step: Using initial torque {torque:.6f} Nm at time {current_time:.6f}s")
+            self.first_step = False
         else:
-            # If we're past the end of the curve, use the last value
-            torque = self.torque_values[-1]
-            print(f"Warning: Simulation time {current_time:.3f}s exceeds precomputed curve end time {self.time_values[-1]:.3f}s. Using last value.")
+            # After first step, apply the time offset compensation
+            if self.use_time_offset:
+                lookup_time = current_time + self.model_timestep
+            else:
+                lookup_time = current_time
+                
+            # Round to 6 decimal places for more accurate dictionary lookup
+            lookup_time = round(lookup_time, 6)
+            
+            # Find torque value using direct lookup
+            if lookup_time in self.torque_map:
+                # Exact time match found
+                torque = self.torque_map[lookup_time]
+            else:
+                # No exact match - handle bounds
+                if lookup_time <= self.min_time:
+                    torque = self.torque_map[round(self.min_time, 6)]
+                elif lookup_time >= self.max_time:
+                    torque = self.torque_map[round(self.max_time, 6)]
+                else:
+                    # Find the closest time
+                    closest_time = min(self.torque_map.keys(), key=lambda x: abs(x - lookup_time))
+                    torque = self.torque_map[closest_time]
         
         # Apply limits
         torque = self.apply_torque_limits(torque)
         
-        # Store the current torque for reference (no limits applied)
+        # Store the current torque for reference
         self.prev_torque = torque
         self.current_rtd = 0.0
         self.current_rtd_limit = float('inf')
         
         return torque
+
+# class HumanPrecomputedController(HumanController):
+#     """Controller that uses pre-computed torque values from a CSV file."""
+    
+#     def __init__(self, model, data, max_torque_df, max_torque_pf, 
+#                  precomputed_params, mrtd_df=None, mrtd_pf=None):
+#         super().__init__(model, data, max_torque_df, max_torque_pf, mrtd_df, mrtd_pf)
+        
+#         # Get trajectory file path from precomputed_params
+#         self.trajectory_file = precomputed_params.get('trajectory_file', 'trajectory.csv')
+        
+#         # Flag to enable one-step look-ahead (compensate for MuJoCo control delay)
+#         self.use_time_offset = True
+        
+#         # Load precomputed curve from file
+#         try:
+#             # Check if the path is absolute or relative
+#             if os.path.isabs(self.trajectory_file):
+#                 file_path = self.trajectory_file
+#             else:
+#                 # If relative, assume it's relative to the current working directory
+#                 file_path = os.path.join(os.getcwd(), self.trajectory_file)
+            
+#             print(f"Loading precomputed trajectory from: {file_path}")
+#             self.curve_data = np.loadtxt(file_path, delimiter=',')
+            
+#             # Verify data format
+#             if self.curve_data.shape[1] < 2:
+#                 raise ValueError(f"CSV file must have at least 2 columns (time, torque). Found {self.curve_data.shape[1]} columns.")
+            
+#             # Create a direct time-to-torque mapping for faster lookup
+#             self.torque_map = {}
+#             for i in range(len(self.curve_data)):
+#                 time_val = self.curve_data[i, 0]
+#                 torque_val = self.curve_data[i, 1] / self.gear_ratio
+#                 self.torque_map[round(time_val, 6)] = torque_val
+            
+#             # Store min/max time values for bound checking
+#             self.min_time = self.curve_data[0, 0]
+#             self.max_time = self.curve_data[-1, 0]
+            
+#             # Calculate the time step in the data
+#             time_diffs = np.diff(self.curve_data[:, 0])
+#             self.avg_time_step = np.mean(time_diffs)
+#             time_step_std = np.std(time_diffs)
+            
+#             # Get the model timestep
+#             self.model_timestep = model.opt.timestep
+            
+#             print(f"Successfully loaded trajectory with {len(self.torque_map)} points.")
+#             print(f"Time range: [{self.min_time:.6f}, {self.max_time:.6f}] s")
+#             print(f"Average time step in data: {self.avg_time_step:.6f} s (std: {time_step_std:.6f} s)")
+#             print(f"Model time step: {self.model_timestep:.6f} s")
+#             print(f"Time offset (look-ahead) enabled: {self.use_time_offset}")
+            
+#             # Check if time steps are consistent
+#             if time_step_std > 1e-6:
+#                 print("Warning: Time steps in the CSV file are not uniform. This may cause inaccuracies.")
+                
+#             # Compare with model time step
+#             if abs(self.avg_time_step - self.model_timestep) > 1e-6:
+#                 print(f"Warning: CSV time step ({self.avg_time_step:.6f} s) differs from model time step ({self.model_timestep:.6f} s).")
+#                 print("This may cause timing mismatches when applying the precomputed torques.")
+            
+#         except Exception as e:
+#             print(f"Error loading control curve: {e}")
+
+        
+#     def compute_control(self, state, target):
+#         """
+#         Use the precomputed torque value with a one-step time offset to 
+#         compensate for the control-to-physics delay.
+#         """
+#         # Get current time
+#         current_time = self.data.time
+        
+#         # Apply time offset (look ahead one time step) if enabled
+#         if self.use_time_offset:
+#             lookup_time = current_time + self.model_timestep
+#         else:
+#             lookup_time = current_time
+            
+#         # Round to 6 decimal places for more accurate dictionary lookup
+#         lookup_time = round(lookup_time, 6)
+        
+#         # Find torque value using direct lookup
+#         if lookup_time in self.torque_map:
+#             # Exact time match found
+#             torque = self.torque_map[lookup_time]
+#         else:
+#             # No exact match - handle bounds
+#             if lookup_time <= self.min_time:
+#                 torque = self.torque_map[round(self.min_time, 6)]
+#             elif lookup_time >= self.max_time:
+#                 torque = self.torque_map[round(self.max_time, 6)]
+#             else:
+#                 # Find the closest time
+#                 closest_time = min(self.torque_map.keys(), key=lambda x: abs(x - lookup_time))
+#                 torque = self.torque_map[closest_time]
+                
+#                 # Debug output (uncomment if needed)
+#                 # time_diff = abs(closest_time - lookup_time)
+#                 # if time_diff > 1e-5:
+#                 #     print(f"Time mismatch: Looking for {lookup_time:.6f}, using {closest_time:.6f} (diff: {time_diff:.6f})")
+        
+#         # Apply limits
+#         torque = self.apply_torque_limits(torque)
+        
+#         # Store the current torque for reference
+#         self.prev_torque = torque
+#         self.current_rtd = 0.0
+#         self.current_rtd_limit = float('inf')
+        
+#         return torque
+
+# class HumanPrecomputedController(HumanController):
+#     """Controller that uses pre-computed torque values from a CSV file."""
+    
+#     def __init__(self, model, data, max_torque_df, max_torque_pf, 
+#                  precomputed_params, mrtd_df=None, mrtd_pf=None):
+#         super().__init__(model, data, max_torque_df, max_torque_pf, mrtd_df, mrtd_pf)
+        
+#         # Get trajectory file path from precomputed_params
+#         self.trajectory_file = precomputed_params.get('trajectory_file', 'trajectory.csv')
+        
+#         # Load precomputed curve from file
+#         try:
+#             # Check if the path is absolute or relative
+#             if os.path.isabs(self.trajectory_file):
+#                 file_path = self.trajectory_file
+#             else:
+#                 # If relative, assume it's relative to the current working directory
+#                 file_path = os.path.join(os.getcwd(), self.trajectory_file)
+            
+#             print(f"Loading precomputed trajectory from: {file_path}")
+#             self.curve_data = np.loadtxt(file_path, delimiter=',')
+            
+#             # Verify data format
+#             if self.curve_data.shape[1] < 2:
+#                 raise ValueError(f"CSV file must have at least 2 columns (time, torque). Found {self.curve_data.shape[1]} columns.")
+            
+#             # Create a direct time-to-torque mapping for faster lookup
+#             self.torque_map = {}
+#             for i in range(len(self.curve_data)):
+#                 time_val = self.curve_data[i, 0]
+#                 torque_val = self.curve_data[i, 1] / self.gear_ratio
+#                 self.torque_map[round(time_val, 6)] = torque_val
+            
+#             # Store min/max time values for bound checking
+#             self.min_time = self.curve_data[0, 0]
+#             self.max_time = self.curve_data[-1, 0]
+            
+#             # Calculate the time step in the data
+#             time_diffs = np.diff(self.curve_data[:, 0])
+#             avg_time_step = np.mean(time_diffs)
+#             time_step_std = np.std(time_diffs)
+            
+#             print(f"Successfully loaded trajectory with {len(self.torque_map)} points.")
+#             print(f"Time range: [{self.min_time:.3f}, {self.max_time:.3f}] s")
+#             print(f"Average time step in data: {avg_time_step:.6f} s (std: {time_step_std:.6f} s)")
+            
+#             # Check if time steps are consistent
+#             if time_step_std > 1e-6:
+#                 print("Warning: Time steps in the CSV file are not uniform. This may cause inaccuracies.")
+                
+#             # Compare with model time step
+#             model_time_step = model.opt.timestep
+#             if abs(avg_time_step - model_time_step) > 1e-6:
+#                 print(f"Warning: CSV time step ({avg_time_step:.6f} s) differs from model time step ({model_time_step:.6f} s).")
+#                 print("This may cause timing mismatches when applying the precomputed torques.")
+            
+#         except Exception as e:
+#             print(f"Error loading control curve: {e}")
+#             # Create a fallback empty dictionary
+#             self.torque_map = {0.0: 0.0, 1.0: 0.0}
+#             self.min_time = 0.0
+#             self.max_time = 1.0
+#             print("Using fallback zero control curve")
+        
+#     def compute_control(self, state, target):
+#         """Use the precomputed torque value for the current time without interpolation."""
+#         # Get current time
+#         current_time = self.data.time
+        
+#         # Round to 6 decimal places for more accurate dictionary lookup
+#         # (handles floating point precision issues)
+#         lookup_time = round(current_time, 6)
+        
+#         # Find torque value using direct lookup
+#         if lookup_time in self.torque_map:
+#             # Exact time match found
+#             torque = self.torque_map[lookup_time]
+#         else:
+#             # No exact match - handle bounds
+#             if current_time <= self.min_time:
+#                 torque = self.torque_map[round(self.min_time, 6)]
+#                 #print(f"Warning: Current time {current_time:.6f}s is before trajectory start time {self.min_time:.6f}s.")
+#             elif current_time >= self.max_time:
+#                 torque = self.torque_map[round(self.max_time, 6)]
+#                 #print(f"Warning: Current time {current_time:.6f}s exceeds trajectory end time {self.max_time:.6f}s.")
+#             else:
+#                 # This should rarely happen if CSV and simulation time steps match
+#                 # But as a fallback, find the closest time
+#                 closest_time = min(self.torque_map.keys(), key=lambda x: abs(x - lookup_time))
+#                 torque = self.torque_map[closest_time]
+#                 #print(f"Warning: No exact time match for {lookup_time:.6f}s, using closest time {closest_time:.6f}s.")
+        
+#         # Apply limits
+#         torque = self.apply_torque_limits(torque)
+        
+#         # Store the current torque for reference (no MRTD limits applied)
+#         self.prev_torque = torque
+#         self.current_rtd = 0.0
+#         self.current_rtd_limit = float('inf')
+        
+#         return torque
+
+# class HumanPrecomputedController(HumanController):
+#     """Controller that uses pre-computed torque values from a CSV file."""
+    
+#     def __init__(self, model, data, max_torque_df, max_torque_pf, 
+#                  precomputed_params, mrtd_df=None, mrtd_pf=None):
+#         super().__init__(model, data, max_torque_df, max_torque_pf, mrtd_df, mrtd_pf)
+        
+#         # Get trajectory file path from precomputed_params
+#         self.trajectory_file = precomputed_params.get('trajectory_file', 'trajectory.csv')
+        
+#         # Load precomputed curve from file
+#         try:
+#             # Check if the path is absolute or relative
+#             if os.path.isabs(self.trajectory_file):
+#                 file_path = self.trajectory_file
+#             else:
+#                 # If relative, assume it's relative to the current working directory
+#                 file_path = os.path.join(os.getcwd(), self.trajectory_file)
+            
+#             print(f"Loading precomputed trajectory from: {file_path}")
+#             self.curve_data = np.loadtxt(file_path, delimiter=',')
+            
+#             # Verify data format
+#             if self.curve_data.shape[1] < 2:
+#                 raise ValueError(f"CSV file must have at least 2 columns (time, torque). Found {self.curve_data.shape[1]} columns.")
+                
+#             self.time_values = self.curve_data[:, 0]
+#             self.torque_values = self.curve_data[:, 1] / self.gear_ratio
+            
+#             # Verify time values are increasing
+#             if not np.all(np.diff(self.time_values) >= 0):
+#                 raise ValueError("Time values in CSV must be monotonically increasing.")
+                
+#             print(f"Successfully loaded trajectory with {len(self.time_values)} points. " 
+#                   f"Time range: [{self.time_values[0]:.3f}, {self.time_values[-1]:.3f}] s")
+            
+#         except Exception as e:
+#             print(f"Error loading control curve: {e}")
+#             # Create a fallback empty curve
+#             self.time_values = np.array([0, 1])
+#             self.torque_values = np.array([0, 0])
+#             print("Using fallback zero control curve")
+        
+#     def compute_control(self, state, target):
+#         """Use the precomputed torque value for the current time."""
+#         # Get current time
+#         current_time = self.data.time
+        
+#         # Find torque value using interpolation
+#         if current_time <= self.time_values[-1]:
+#             if self.interpolation == 'linear':
+#                 # Use numpy's interp function for linear interpolation
+#                 torque = np.interp(current_time, self.time_values, self.torque_values)
+#             elif self.interpolation == 'nearest':
+#                 # Find nearest index
+#                 idx = np.abs(self.time_values - current_time).argmin()
+#                 torque = self.torque_values[idx]
+#             elif self.interpolation == 'cubic' and len(self.time_values) >= 4:
+#                 # Use cubic interpolation if scipy is available and we have enough points
+#                 try:
+#                     from scipy.interpolate import interp1d
+#                     cubic_interp = interp1d(self.time_values, self.torque_values, kind='cubic')
+#                     torque = float(cubic_interp(current_time))
+#                 except ImportError:
+#                     # Fall back to linear if scipy not available
+#                     torque = np.interp(current_time, self.time_values, self.torque_values)
+#             else:
+#                 # Default to linear for any other case
+#                 torque = np.interp(current_time, self.time_values, self.torque_values)
+#         else:
+#             # If we're past the end of the curve, use the last value
+#             torque = self.torque_values[-1]
+#             print(f"Warning: Simulation time {current_time:.3f}s exceeds precomputed curve end time {self.time_values[-1]:.3f}s. Using last value.")
+        
+#         # Apply limits
+#         torque = self.apply_torque_limits(torque)
+        
+#         # Store the current torque for reference (no limits applied)
+#         self.prev_torque = torque
+#         self.current_rtd = 0.0
+#         self.current_rtd_limit = float('inf')
+        
+#         return torque
 
 class HumanLQRController(HumanController):
     """LQR controller for human joint."""

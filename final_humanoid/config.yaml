@@ -10,7 +10,7 @@ config:
   ankle_initial_velocity: 0.2  # Example: Set initial ankle velocity to 0.2 rad/s
 
   foot_angle_initial_position_radians: 0                # set the initial angle of the foot
-  simend: 10                                           # set the duration for which the simulation will run
+  simend: 5                                           # set the duration for which the simulation will run
   M_total: 60                                           # total mass of the human, used for literature estimate calculations
   H_total: 1.59                                         # total height of the human, used for literature estimtae calculations
   mp4_file_name: 'pert_with_contact_force_vis.mp4'      # file name for mp4 file to be saved to, if you want to record the simultation rendering
@@ -85,7 +85,6 @@ config:
       # PD specific parameters
       precomputed_params:
         trajectory_file: "ankle_torque_trajectory.csv"
-        interpolation: "linear"            # Interpolation method (options: linear, nearest, cubic)
 
     exo:
       type: "None"         # Options: "PD", "None" 
