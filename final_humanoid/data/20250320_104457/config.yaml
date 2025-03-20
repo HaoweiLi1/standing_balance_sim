@@ -1,0 +1,71 @@
+config:
+  H_total: 1.59
+  M_total: 60
+  ankle_initial_position_radians: -0.03
+  ankle_initial_velocity: 0.3
+  ankle_position_setpoint_radians: 0.0
+  apply_perturbation: false
+  camera_azimuth: 87.5
+  camera_distance: 3.0
+  camera_elevation: -5
+  camera_lookat_xyz: 0.012768, -0.000000, 1
+  controller_flag: true
+  controllers:
+    exo:
+      max_torque: 50
+      pd_params:
+        kd: 10
+        kp: 400
+        use_dynamic_gains: true
+      type: PD
+    human:
+      lqr_params:
+        Q_angle: 1000
+        Q_velocity: 4000
+        R: 1
+      max_torque_df: 22
+      max_torque_pf: -88
+      mrtd_df: 148
+      mrtd_pf: 389
+      pd_params:
+        kd: 10
+        kp: 100
+      precomputed_params:
+        trajectory_file: ankle_torque_trajectory.csv
+      type: LQR
+  foot_angle_initial_position_radians: 0
+  foot_rotation_initial_velocity: 0.0
+  foot_x_initial_velocity: 0.0
+  foot_z_initial_velocity: 0.0
+  gravity: -9.81
+  lit_xml_file: literature_humanoid.xml
+  mp4_file_name: LQR_PDexo_unbalance.mp4
+  mp4_flag: true
+  mp4_fps: 60
+  perturbation_amplitude: 50
+  perturbation_direction: null
+  perturbation_duration: null
+  perturbation_frequency: 0.5
+  perturbation_magnitude: 100
+  perturbation_max_duration: 1.0
+  perturbation_max_interval: 5.0
+  perturbation_max_magnitude: 100
+  perturbation_min_duration: 0.2
+  perturbation_min_interval: 2.0
+  perturbation_period: 3.25
+  perturbation_phase: 0
+  perturbation_start_time: 5.0
+  perturbation_time: 0.3
+  perturbation_type: impulse
+  plotter_flag: false
+  rolling_friction_constant: 0.99
+  simend: 10
+  simulation_timestep: 0.0005
+  translation_friction_constant: 0.99
+  visualization_flag: true
+  visualize_actuators: false
+  visualize_center_of_mass: false
+  visualize_contact_force: false
+  visualize_joints: false
+  visualize_perturbation_force: false
+  xml_path: initial_humanoid.xml
