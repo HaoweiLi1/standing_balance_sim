@@ -1,7 +1,3 @@
-clear all;
-close all;
-clc;
-
 %% Configuration Parameters (from config.yaml)
 % System parameters
 M_total = 60;                   % Total mass (kg)

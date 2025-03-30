@@ -1,7 +1,3 @@
-clear all;
-close all;
-clc;
-
 %% System Parameters
 % Anthropometric parameters (from the paper and ankle_lqr_simulation.m)
 M_total = 60;                   % Total body mass (kg)
@@ -20,16 +16,21 @@ MRTD_df = 148;                  % Maximum rate of torque development - dorsiflex
 MRTD_pf = 389;                  % Maximum rate of torque development - plantarflexion (Nm/s)
 
 % Initial conditions
-theta_0 = -0.03;                % Initial ankle angle (rad)
-theta_dot_0 = 0.3;              % Initial ankle angular velocity (rad/s)
+theta_0 = -0.02;                % Initial ankle angle (rad)
+theta_dot_0 = 0.2;              % Initial ankle angular velocity (rad/s)
 
 % Target position
 theta_target = 0.0;             % Target ankle angle (rad)
 
 % Simulation parameters
 dt = 0.0005;                    % Time step (s)
-T_sim = 5;                      % Simulation duration (s)
+T_sim = 0.5;                      % Simulation duration (s)
 N = round(T_sim/dt) + 1;        % Number of time steps
+
+% Foot geometry and friction parameters
+l_heel = 0.05 * H_total;        % Distance from ankle to heel (m)
+l_toe = 0.15 * H_total;         % Distance from ankle to toe (m)
+mu = 0.8;                       % Friction coefficient
 
 %% Setup for Direct Collocation Optimal Control
 % Based on the "Discretized Optimal Trajectory" tutorial
@@ -83,6 +84,46 @@ initialcons = [theta(1) == theta_0; theta_dot(1) == theta_dot_0];
 % Final conditions (want to reach target and stop)
 finalcons = [theta(N) == theta_target; theta_dot(N) == 0];
 
+% MODIFICATION 1: Comment out foot-ground contact constraints
+% Define state-dependent bound functions
+% For tipping constraints:
+% h_upper_fun = @(theta_val) m_body * g * cos(theta_val) * l_toe;
+% h_lower_fun = @(theta_val) -m_body * g * cos(theta_val) * l_heel;
+% For friction constraint:
+% friction_bound_fun = @(theta_val) mu * m_body * g * min(l_toe, l_heel);
+
+% Create SEPARATE constraint arrays for upper and lower bounds
+% foot_upper_constraints = optimconstr(N-1);
+% foot_lower_constraints = optimconstr(N-1);
+
+% for i = 1:N-1
+%     % Net ankle torque (human only in current model)
+%     ankle_torque = a(i);
+%     
+%     % Using fcn2optimexpr to handle nonlinear expressions
+%     tau_upper_tipping = fcn2optimexpr(h_upper_fun, theta(i));
+%     tau_lower_tipping = fcn2optimexpr(h_lower_fun, theta(i));
+%     tau_friction_bound = fcn2optimexpr(friction_bound_fun, theta(i));
+%     
+%     % Apply most restrictive constraint (tipping vs. friction)
+%     % For friction, we need both upper and lower bounds
+%     tau_upper = fcn2optimexpr(@(u1, u2) min(u1, u2), tau_upper_tipping, tau_friction_bound);
+%     tau_lower = fcn2optimexpr(@(l1, l2) max(l1, l2), tau_lower_tipping, -tau_friction_bound);
+%     
+%     % Add constraints to the problem as SEPARATE constraints
+%     foot_upper_constraints(i) = ankle_torque <= tau_upper;
+%     foot_lower_constraints(i) = ankle_torque >= tau_lower;
+% end
+
+% Add angle range constraint to prevent extreme angles
+max_angle = 30 * pi/180;  % 30 degrees in radians
+angle_range_upper = optimconstr(N);
+angle_range_lower = optimconstr(N);
+for i = 1:N
+    angle_range_upper(i) = theta(i) <= max_angle;
+    angle_range_lower(i) = theta(i) >= -max_angle;
+end
+
 % Add all constraints to the problem
 ankleProb.Constraints.acons_pos = acons_pos;
 ankleProb.Constraints.acons_neg = acons_neg;
@@ -92,6 +133,11 @@ ankleProb.Constraints.rtd_upper_constraints = rtd_upper_constraints;
 ankleProb.Constraints.rtd_lower_constraints = rtd_lower_constraints;
 ankleProb.Constraints.initialcons = initialcons;
 ankleProb.Constraints.finalcons = finalcons;
+% MODIFICATION 1: Comment out foot-ground constraints
+% ankleProb.Constraints.foot_upper_constraints = foot_upper_constraints;
+% ankleProb.Constraints.foot_lower_constraints = foot_lower_constraints;
+ankleProb.Constraints.angle_range_upper = angle_range_upper;
+ankleProb.Constraints.angle_range_lower = angle_range_lower;
 
 % Create an initial guess for the variables
 x0.theta = linspace(theta_0, theta_target, N)';
@@ -154,6 +200,20 @@ else
         % Apply torque limits
         a_sol(i) = min(max(a_sol(i), MT_pf), MT_df);
         
+        % MODIFICATION 1: Comment out foot-ground constraints check
+        % Apply foot-ground constraints
+        % Calculate bounds for this state
+        % tau_upper_tipping = h_upper_fun(theta_sol(i));
+        % tau_lower_tipping = h_lower_fun(theta_sol(i));
+        % tau_friction_bound = friction_bound_fun(theta_sol(i));
+        
+        % Combined bounds
+        % tau_upper = min(tau_upper_tipping, tau_friction_bound);
+        % tau_lower = max(tau_lower_tipping, -tau_friction_bound);
+        
+        % Apply the constraints
+        % a_sol(i) = min(max(a_sol(i), tau_lower), tau_upper);
+        
         % Simple Euler integration
         theta_dot_sol(i+1) = theta_dot_sol(i) + dt * ((a_sol(i)/I) - (b/I)*theta_dot_sol(i) + (m_body*g*l_COM/I)*sin(theta_sol(i)));
         theta_sol(i+1) = theta_sol(i) + dt * theta_dot_sol(i);
@@ -173,6 +233,21 @@ rtd_sol(N-1) = rtd_sol(N-2);  % Repeat the last value for plotting
 
 % Calculate the gravity torque
 gravity_torque = m_body * g * l_COM * sin(theta_sol);
+
+% MODIFICATION 1: Comment out foot-ground constraint bounds calculation
+% Calculate the foot-ground constraint bounds along the trajectory
+% tipping_upper_bound = zeros(N, 1);
+% tipping_lower_bound = zeros(N, 1);
+% friction_bound = zeros(N, 1);
+% for i = 1:N
+%     tipping_upper_bound(i) = h_upper_fun(theta_sol(i));
+%     tipping_lower_bound(i) = h_lower_fun(theta_sol(i));
+%     friction_bound(i) = friction_bound_fun(theta_sol(i));
+% end
+
+% Calculate combined bounds
+% upper_bound = min(tipping_upper_bound, friction_bound);
+% lower_bound = max(tipping_lower_bound, -friction_bound);
 
 %% Export torque trajectory to CSV
 % Create a table with time and applied torque
@@ -205,18 +280,22 @@ xlabel('Time (s)');
 ylabel('Angular Velocity (deg/s)');
 title('Ankle Joint Velocity');
 
-% Plot 3: Torque
+% Plot 3: Torque (MODIFIED to remove foot-ground bounds)
 subplot(2, 2, 3);
 plot(t(1:N-1), a_sol, 'LineWidth', 2);
 hold on;
 plot(t, gravity_torque, 'g--', 'LineWidth', 1.5);
+% MODIFICATION 1: Comment out foot-ground constraint bounds plotting
+% plot(t, upper_bound, 'r-.', 'LineWidth', 1.5);
+% plot(t, lower_bound, 'r-.', 'LineWidth', 1.5);
 plot(t, ones(size(t))*MT_df, 'k--');
 plot(t, ones(size(t))*MT_pf, 'k--');
 grid on;
 xlabel('Time (s)');
 ylabel('Torque (Nm)');
 title('Ankle Joint Torque');
-legend('Applied Torque', 'Gravity Torque', 'Torque Limits');
+% MODIFICATION 1: Update legend without foot-ground bounds
+legend('Applied Torque', 'Gravity Torque', 'Physiological Limits');
 
 % Plot 4: Rate of Torque Development
 subplot(2, 2, 4);
@@ -231,7 +310,7 @@ title('Rate of Torque Development');
 legend('Applied RTD', 'RTD Limits');
 
 % Adjust layout
-sgtitle('Optimal Ankle Balance Control Simulation', 'FontSize', 16);
+sgtitle('Optimal Ankle Balance Control Simulation with Foot-Ground Constraints Removed', 'FontSize', 16);
 set(gcf, 'Color', 'w');
 
 %% Additional Analysis: Phase Plane Trajectory
@@ -246,6 +325,23 @@ ylabel('Angular Velocity (deg/s)');
 title('Phase Plane Trajectory');
 legend('Trajectory', 'Initial State', 'Target State');
 
+% MODIFICATION 1: Remove foot-ground constraints figure
+% %% Additional Analysis: Foot-Ground Constraints
+% figure('Position', [700, 550, 700, 500]);
+% plot(t, tipping_upper_bound, 'b-', 'LineWidth', 1.5);
+% hold on;
+% plot(t, tipping_lower_bound, 'b-', 'LineWidth', 1.5);
+% plot(t, friction_bound, 'g--', 'LineWidth', 1.5);
+% plot(t, -friction_bound, 'g--', 'LineWidth', 1.5);
+% plot(t, upper_bound, 'r-', 'LineWidth', 2);
+% plot(t, lower_bound, 'r-', 'LineWidth', 2);
+% plot(t(1:N-1), a_sol, 'k-', 'LineWidth', 2);
+% grid on;
+% xlabel('Time (s)');
+% ylabel('Torque (Nm)');
+% title('Foot-Ground Constraint Analysis');
+% legend('Tipping Upper Bound', 'Tipping Lower Bound', 'Friction Upper Bound', 'Friction Lower Bound', 'Combined Upper Bound', 'Combined Lower Bound', 'Applied Torque');
+
 %% Display Summary Statistics
 fprintf('\n---- Simulation Results ----\n');
 fprintf('Final ankle position: %.4f deg\n', theta_sol(end)*180/pi);
@@ -255,3 +351,14 @@ fprintf('Maximum angular velocity: %.4f deg/s\n', max(abs(theta_dot_sol))*180/pi
 fprintf('Maximum torque: %.4f Nm\n', max(abs(a_sol)));
 fprintf('Maximum RTD: %.4f Nm/s\n', max(abs(rtd_sol)));
 fprintf('--------------------------\n');
+
+% MODIFICATION 1: Remove foot-ground constraint check
+% Check if solution respects foot-ground constraints
+% torque_within_bounds = all(a_sol <= upper_bound(1:N-1) & a_sol >= lower_bound(1:N-1));
+% fprintf('Solution respects foot-ground constraints: %s\n', mat2str(torque_within_bounds));
+
+% Check which constraint is more restrictive (tipping or friction)
+% tipping_more_restrictive_upper = sum(tipping_upper_bound < friction_bound);
+% tipping_more_restrictive_lower = sum(tipping_lower_bound > -friction_bound);
+% fprintf('Tipping constraint more restrictive than friction: %.1f%% (upper), %.1f%% (lower)\n', ...
+%     100*tipping_more_restrictive_upper/N, 100*tipping_more_restrictive_lower/N);
