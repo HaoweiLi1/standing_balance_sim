@@ -1,0 +1,743 @@
+import mujoco as mj
+from mujoco.glfw import glfw
+import numpy as np
+import os
+from typing import Callable, Optional, Union, List
+import scipy.linalg as linalg
+import mediapy as media
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import time
+from queue import Queue
+import xml.etree.ElementTree as ET
+import yaml
+
+
+from xml_utilities import calculate_kp_and_geom, set_geometry_params
+
+from renderer import MujocoRenderer
+from data_logger import DataLogger
+from data_plotter import DataPlotter
+from controllers import create_human_controller, create_exo_controller, create_hip_controller
+from perturbation import create_perturbation
+
+
+plt.rcParams['text.usetex'] = True
+
+mpl.rcParams.update(mpl.rcParamsDefault)
+
+perturbation_queue = Queue()
+control_log_queue = Queue()
+counter_queue = Queue()
+perturbation_datalogger_queue = Queue()
+
+class AnkleExoSimulation:
+    """
+    Main simulation class for ankle exoskeleton.
+    Handles physics simulation, controllers, and data logging.
+    """
+    
+    def __init__(self, config_file='config.yaml'):
+        """
+        Initialize the simulation.
+        
+        Args:
+            config_file: Path to configuration YAML file
+        """
+        print('Simulation initialized')
+        self.config_file = config_file
+        self.params = self.load_params_from_yaml(config_file)
+        self.config = self.params['config']
+        
+        # Setup flags
+        self.plot_flag = self.config['plotter_flag']
+        self.mp4_flag = self.config['mp4_flag']
+        
+        # Controllers
+        self.human_controller = None
+        self.exo_controller = None
+        self.hip_controller = None 
+        self.show_exoskeleton = True  # Add flag for exoskeleton visibility
+        
+        # Renderer
+        self.renderer = None
+        
+        # Data logging
+        self.logger = DataLogger()
+        self.plotter = None
+        
+        self.visualization_flag = self.config.get('visualization_flag', True)
+
+        # MuJoCo objects
+        self.model = None
+        self.data = None
+        self.ankle_joint_id = None
+        self.human_body_id = None
+        
+        # Setpoints
+        self.ankle_position_setpoint = self.config['ankle_position_setpoint_radians']
+        self.hip_position_setpoint = self.config.get('hip_position_setpoint_radians', 0.0) 
+        
+        # Perturbation
+        self.perturbation = None
+        self.perturbation_thread = None
+
+    def load_params_from_yaml(self, file_path):
+        """Load configuration from YAML file."""
+        with open(file_path, 'r') as file:
+            params = yaml.safe_load(file)
+        return params
+
+    def initialize_controllers(self, model, data):
+        """Initialize controllers based on configuration."""
+        # Get human controller configuration
+        human_config = self.config['controllers']['human']
+        human_type = human_config['type']
+        
+        # Debug prints
+        print(f"MRTD from config - DF: {human_config.get('mrtd_df')}, PF: {human_config.get('mrtd_pf')}")
+        print(f"Human config keys: {list(human_config.keys())}")
+
+        # Get exo controller configuration
+        exo_config = self.config['controllers']['exo']
+        exo_type = exo_config['type']
+
+        # Prepare parameters for human controller
+        human_params = {
+            'max_torque_df': human_config['max_torque_df'],
+            'max_torque_pf': human_config['max_torque_pf'],
+            'mass': self.config['M_total'] - 2*0.0145*self.config['M_total'],
+            'leg_length': 0.575 * self.config['H_total'],
+            'mrtd_df': human_config.get('mrtd_df'),
+            'mrtd_pf': human_config.get('mrtd_pf')
+        }
+
+        # Debug print
+        print(f"Human params for controller: {human_params}")
+        
+        # Add controller-specific parameters
+        if human_type == "LQR":
+            lqr_params = human_config['lqr_params']
+            human_params.update({
+                'Q_angle': lqr_params['Q_angle'],
+                'Q_velocity': lqr_params['Q_velocity'],
+                'R': lqr_params['R']
+            })
+            # For LQR, also pass exo configuration if exo is enabled
+            if exo_type != "None":
+                human_params['exo_config'] = exo_config
+                
+                # Get the pre-calculated values from xml_utilities for dynamic gains
+                if exo_type == "PD" and exo_config.get('pd_params', {}).get('use_dynamic_gains', False):
+                    # _, m_feet, m_body, l_COM, _, _, K_p = calculate_kp_and_geom(
+                    #     self.config['M_total'], 
+                    #     self.config['H_total']
+                    # )
+                    _, m_feet, m_body, l_COM, _, _, K_p, *_ = calculate_kp_and_geom(self.config['M_total'], self.config['H_total'])
+                    # Calculate dynamic gains
+                    kp = K_p  # Already calculated as m_body * g * l_COM
+                    kd = 0.3 * np.sqrt(m_body * l_COM**2 * kp)
+                    
+                    # Pass dynamic gains to LQR controller
+                    human_params['dynamic_gains'] = {
+                        'kp': kp,
+                        'kd': kd
+                    }
+                    print(f"Passing exo dynamic gains to LQR - Kp: {kp:.2f}, Kd: {kd:.2f}")
+        elif human_type == "PD":
+            pd_params = human_config['pd_params']
+            human_params.update({
+                'kp': pd_params['kp'],
+                'kd': pd_params['kd']
+            })
+        elif human_type == "Precomputed":
+            human_params['precomputed_params'] = human_config.get('precomputed_params', {})
+            # Log information about the trajectory file
+            trajectory_file = human_params['precomputed_params'].get('trajectory_file')
+            if trajectory_file:
+                print(f"Using precomputed trajectory from: {trajectory_file}")
+            
+        # Create human controller using factory function
+        self.human_controller = create_human_controller(
+            human_type, model, data, human_params
+        )
+
+        # Set show_exoskeleton flag based on controller type
+        self.show_exoskeleton = exo_type != "None"
+        
+        # Get the pre-calculated values from xml_utilities
+        # _, m_feet, m_body, l_COM, _, _, K_p = calculate_kp_and_geom(
+        #     self.config['M_total'], 
+        #     self.config['H_total']
+        # )
+        _, m_feet, m_body, l_COM, _, _, K_p, *_ = calculate_kp_and_geom(self.config['M_total'], self.config['H_total'])
+        # Prepare parameters for exo controller
+        exo_params = {
+            'max_torque': exo_config.get('max_torque', 0)
+        }
+        
+        # Add controller-specific parameters
+        if exo_type == "PD" and exo_config.get('pd_params', {}).get('use_dynamic_gains', False):
+            # Calculate Kp and Kd dynamically using the pre-calculated values
+            kp = K_p  # Already calculated as m_body * g * l_COM
+            kd = 0.3 * np.sqrt(m_body * l_COM**2 * kp)
+            
+            exo_params.update({
+                'kp': kp,
+                'kd': kd
+            })
+            
+            print(f"Exo PD controller configured with dynamic gains - Kp: {kp:.2f}, Kd: {kd:.2f}")
+
+        elif exo_type == "PD":
+            # Use the values from config if dynamic gains are not enabled
+            pd_params = exo_config['pd_params']
+            exo_params.update({
+                'kp': pd_params.get('kp', 400),
+                'kd': pd_params.get('kd', 10)
+            })
+
+        # Create exo controller using factory function
+        self.exo_controller = create_exo_controller(
+            exo_type, model, data, exo_params
+        )
+        
+        # Set exoskeleton visibility based on controller type
+        self.toggle_exoskeleton_visibility(model, self.show_exoskeleton)
+
+        # Initialize hip controller if config exists
+        if 'hip' in self.config['controllers']:
+            hip_config = self.config['controllers']['hip']
+            hip_type = hip_config['type']
+            
+            # Prepare parameters for hip controller
+            hip_params = {
+                'max_torque': hip_config.get('max_torque', 150)
+            }
+            
+            # Add controller-specific parameters
+            if hip_type == "PD":
+                pd_params = hip_config['pd_params']
+                hip_params.update({
+                    'kp': pd_params.get('kp', 100),
+                    'kd': pd_params.get('kd', 10)
+                })
+            
+            # Create hip controller
+            self.hip_controller = create_hip_controller(
+                hip_type, model, data, hip_params
+            )
+            
+            print(f"Hip {hip_type} controller initialized with params: {hip_params}")
+        else:
+            # Create a dummy controller that always returns zero
+            self.hip_controller = None
+            print("No hip controller configured")
+
+    
+
+
+    def toggle_exoskeleton_visibility(self, model, show_exoskeleton):
+        """
+        Toggle the visibility of exoskeleton components in the model.
+        
+        Args:
+            model: MuJoCo model
+            show_exoskeleton: Boolean indicating whether to show the exoskeleton
+        """
+        # List of all exoskeleton component names
+        exo_geom_names = [
+            "exo_heel_attachment", 
+            "exo_housing", 
+            "exo_connecting_rod",
+            "exo_joint_upper", 
+            "exo_joint_lower",
+            "exo_calf_strap_left",
+            "exo_calf_strap_right",
+            "exo_calf_strap_top"
+        ]
+        
+        # Set the visibility of each component
+        for name in exo_geom_names:
+            geom_id = mj.mj_name2id(model, mj.mjtObj.mjOBJ_GEOM, name)
+            if geom_id >= 0:  # Check if the geom exists
+                # Set alpha to 0 (invisible) or 1 (visible)
+                model.geom_rgba[geom_id][3] = 1.0 if show_exoskeleton else 0.0
+                
+                # Additionally, if not showing, move the geom far away to ensure no interactions
+                if not show_exoskeleton:
+                    model.geom_pos[geom_id] = np.array([1000.0, 1000.0, 1000.0])
+                
+        print(f"Exoskeleton visibility set to: {show_exoskeleton}")
+
+    def controller(self, model, data):
+        """Controller function for the leg."""
+        # Get current state
+        state = np.array([
+            data.sensordata[0],  # Joint angle
+            data.qvel[3]         # Joint velocity
+        ])
+        
+        # Compute human control
+        human_torque = self.human_controller.compute_control(
+            state=state,
+            target=self.ankle_position_setpoint
+        )
+        data.ctrl[0] = human_torque
+        
+        # Compute exo control
+        exo_torque = self.exo_controller.compute_control(
+            state=state,
+            target=self.ankle_position_setpoint
+        )
+        data.ctrl[1] = exo_torque
+        
+        # data.ctrl[2] = 0.0
+        # Handle hip controller if configured
+        if self.hip_controller is not None:
+            hip_joint_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, "hip_hinge")
+            if hip_joint_id >= 0:
+                # Get hip state - find the right sensor index for hip position
+                hip_pos_idx = 3  # Adjust based on your sensor ordering
+                hip_state = np.array([
+                    data.sensordata[hip_pos_idx],  # Hip joint angle from sensor
+                    data.qvel[4]  # Hip joint velocity - adjust index if needed
+                ])
+                
+                # Compute hip control
+                hip_torque = self.hip_controller.compute_control(
+                    state=hip_state,
+                    target=self.hip_position_setpoint
+                )
+                data.ctrl[2] = hip_torque
+            else:
+                data.ctrl[2] = 0.0  # No torque if hip joint not found
+        else:
+            data.ctrl[2] = 0.0  # No torque if no controller
+        print(data.ctrl[2])
+
+    def initialize_model(self):
+        """Initialize MuJoCo model and data."""
+        # Get model parameters
+        xml_path = self.config['xml_path']
+        translation_friction_constant = self.config['translation_friction_constant']
+        rolling_friction_constant = self.config['rolling_friction_constant']
+        M_total = self.config['M_total']
+        H_total = self.config['H_total']
+        
+        # Prepare model parameters
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        # h_f, m_feet, m_body, l_COM, l_foot, a, self.K_p = calculate_kp_and_geom(M_total, H_total)
+    
+        # Set geometry parameters (we always create the exoskeleton components in XML)
+        # set_geometry_params(
+        #     root, 
+        #     m_feet, 
+        #     m_body, 
+        #     l_COM, 
+        #     l_foot, 
+        #     a, 
+        #     H_total, 
+        #     h_f, 
+        #     translation_friction_constant, 
+        #     rolling_friction_constant
+        # )
+
+        # Update this line to capture all returned values
+        h_f, m_feet, m_body, l_COM, l_foot, a, self.K_p, lower_leg_length, upper_body_length, \
+        lower_leg_mass, upper_body_mass, lower_leg_com, upper_body_com = calculate_kp_and_geom(M_total, H_total)
+        
+        # Pass all parameters to set_geometry_params
+        set_geometry_params(
+            root, 
+            m_feet, 
+            m_body, 
+            l_COM, 
+            l_foot, 
+            a, 
+            H_total, 
+            h_f, 
+            translation_friction_constant, 
+            rolling_friction_constant,
+            lower_leg_length,
+            upper_body_length,
+            lower_leg_mass,
+            upper_body_mass,
+            lower_leg_com,
+            upper_body_com
+        )
+
+        # Write modified model
+        literature_model = self.config['lit_xml_file']
+        tree.write(literature_model)
+        
+        # Load model and create data
+        self.model = mj.MjModel.from_xml_path(literature_model)
+        self.data = mj.MjData(self.model)
+        
+        # Set model parameters
+        self.model.opt.timestep = self.config['simulation_timestep']
+        self.model.opt.gravity = np.array([0, 0, self.config['gravity']])
+
+        
+        
+        # Set initial conditions
+        self.data.qvel[0] = self.config['foot_rotation_initial_velocity']  # hinge joint at top of body
+        self.data.qvel[1] = self.config['foot_x_initial_velocity']       # slide joint in x direction
+        self.data.qvel[2] = self.config['foot_z_initial_velocity']       # slide joint in z direction
+        self.data.qvel[3] = self.config['ankle_initial_velocity']         # hinge joint at ankle
+        # self.data.qvel[4] = 0.0  # NEW: hip joint velocity (initialized to 0)
+
+        self.data.qpos[0] = self.config['foot_angle_initial_position_radians']
+        self.data.qpos[3] = self.config['ankle_initial_position_radians']
+        # self.data.qpos[4] = 0.0  # NEW: hip joint position (initialized to 0)
+
+        # Find hip joint ID
+        hip_joint_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, "hip_hinge")
+        
+        if hip_joint_id >= 0:
+            # Get DOF address for hip joint (more reliable way)
+            hip_dof_adr = None
+            for i in range(self.model.njnt):
+                if i == hip_joint_id:  # Compare joint indices directly
+                    hip_dof_adr = self.model.jnt_dofadr[i]
+                    break
+                    
+            if hip_dof_adr is not None:
+                # Set hip initial values
+                hip_pos = self.config.get('hip_initial_position_radians', 0.0)
+                hip_vel = self.config.get('hip_initial_velocity', 0.0)
+                
+                self.data.qpos[hip_dof_adr] = hip_pos
+                self.data.qvel[hip_dof_adr] = hip_vel
+                
+                print(f"Hip joint (ID: {hip_joint_id}, DOF address: {hip_dof_adr}) " 
+                    f"initialized to position {hip_pos}, velocity {hip_vel}")
+            else:
+                print(f"Warning: Hip joint found (ID: {hip_joint_id}) but couldn't get DOF address")
+        else:
+            print("Warning: Hip joint not found in model")
+        # if hip_joint_id >= 0:  # If the hip joint exists in the model
+        #     for i in range(self.model.njnt):
+        #         if self.model.jnt_type[i] == mj.mjtJoint.mjJNT_HINGE and self.model.name_jntadr[i] == hip_joint_id:
+        #             dof_index = self.model.jnt_dofadr[i]
+        #             # Set initial conditions for hip
+        #             self.data.qpos[dof_index] = 0.0  # Position = 0
+        #             self.data.qvel[dof_index] = 0.0  # Velocity = 0
+        #             print(f"Hip joint initialized at position 0, velocity 0")
+        #             break
+        #     else:
+        #         print("Warning: Could not find DOF index for hip joint")
+        #     # # Get the DOF index for the hip joint
+        #     # hip_joint_adr = self.model.jnt_dofadr[hip_joint_id]
+            
+        #     # # Set initial conditions for hip
+        #     # self.data.qpos[hip_joint_adr] = 0.0  # Position = 0
+        #     # self.data.qvel[hip_joint_adr] = 0.0  # Velocity = 0
+            
+        #     # print(f"Hip joint initialized at position 0, velocity 0")
+        # else:
+        #     print("Warning: Hip joint not found in model")
+
+        # Call forward to update derived quantities
+        mj.mj_forward(self.model, self.data)
+
+        print(f"Initial ankle velocity: {self.data.qvel[3]}")
+        
+        # Get important joint and body IDs
+        self.ankle_joint_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
+        self.human_body_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_BODY, "long_link_body")
+        
+        # Initialize controllers
+        self.initialize_controllers(self.model, self.data)
+        
+        # MODIFIED: Remove the MuJoCo control callback setup
+        # We will manually call the controller before each step
+        # if self.config['controller_flag']:
+        #     mj.set_mjcb_control(self.controller)
+        
+        print(f"Initial ankle velocity: {self.data.qvel[3]}")
+        
+        print("Model initialized successfully")
+
+    def initialize_renderer(self):
+        """Initialize renderer if visualization is enabled."""
+        if not self.visualization_flag:
+            print("Visualization disabled, skipping renderer initialization")
+            return
+            
+        self.renderer = MujocoRenderer()
+        self.renderer.setup_visualization(self.model, self.config)
+        
+        if self.mp4_flag:
+            self.renderer.start_recording()
+            
+        print("Renderer initialized successfully")
+
+    def initialize_perturbation(self):
+        """Initialize perturbation if enabled."""
+        if not self.config['apply_perturbation']:
+            print("Perturbation disabled")
+            return
+            
+        self.perturbation = create_perturbation(self.config)
+        self.perturbation_thread = self.perturbation.start(perturbation_queue)
+        print(f"Perturbation initialized: {type(self.perturbation).__name__}")
+        
+    def initialize(self):
+        """Initialize all simulation components."""
+        # Initialize logger and plotter
+        self.logger.create_standard_datasets()
+        self.logger.create_dataset("hip_rtd", 3)
+        self.logger.save_config(self.params)
+        self.plotter = DataPlotter(self.logger.run_dir)
+        
+        # Initialize model, renderer, and perturbation
+        self.initialize_model()
+        original_time = self.data.time
+        self.data.time = 0.0
+        # Log initial state at t=0 before any physics steps
+        self._log_simulation_data()
+
+        # Restore original time
+        self.data.time = original_time
+
+        self.initialize_renderer()
+        self.initialize_perturbation()
+        
+        print(f"Simulation duration: {self.config['simend']} seconds")
+        
+    def _log_simulation_data(self, custom_time=None):
+        """Log all simulation data for the current timestep."""
+
+        # Use custom time if provided, otherwise use simulation time
+        time_value = custom_time if custom_time is not None else self.data.time
+        # Extract actuator IDs
+        human_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "human_ankle_actuator")
+        exo_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "exo_ankle_actuator")
+        hip_actuator_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, "hip_actuator")
+
+        # Get torque values
+        human_torque_executed = self.data.actuator_force[human_actuator_id] 
+        exo_torque_executed = self.data.actuator_force[exo_actuator_id] 
+        ankle_torque_executed = self.data.qfrc_actuator[self.ankle_joint_id]
+        gravity_torque = self.data.qfrc_bias[self.ankle_joint_id]
+
+        # Get ankle joint ID and hip joint ID
+        ankle_joint_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, "ankle_hinge")
+        hip_joint_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, "hip_hinge")
+        
+        # Log all the data with the precise time
+        self.logger.log_data("human_torque", np.array([time_value, human_torque_executed]))
+        self.logger.log_data("exo_torque", np.array([self.data.time, exo_torque_executed]))
+        self.logger.log_data("ankle_torque", np.array([self.data.time, ankle_torque_executed]))
+        self.logger.log_data("gravity_torque", np.array([self.data.time, gravity_torque]))
+        self.logger.log_data("control_torque", np.array([self.data.time, self.data.qfrc_actuator[self.ankle_joint_id]]))
+        
+        # Joint data
+        self.logger.log_data("joint_position", np.array([self.data.time, 180/np.pi*self.data.qpos[self.ankle_joint_id]]))
+        self.logger.log_data("joint_velocity", np.array([self.data.time, 180/np.pi*self.data.qvel[self.ankle_joint_id]]))
+        self.logger.log_data("goal_position", np.array([self.data.time, 180/np.pi*self.ankle_position_setpoint]))
+        
+        # Constraint and contact forces
+        self.logger.log_data("constraint_force", np.array([
+            self.data.time, 
+            self.data.qfrc_constraint[0], 
+            self.data.qfrc_constraint[1], 
+            self.data.qfrc_constraint[2], 
+            self.data.qfrc_constraint[3]
+        ]))
+        self.logger.log_data("contact_force", np.array([
+            self.data.time, 
+            self.data.sensordata[1], 
+            self.data.sensordata[2]
+        ]))
+        
+        # COM data
+        com = self.data.xipos[self.human_body_id]
+        self.logger.log_data("body_com", np.array([self.data.time, com[0], com[1], com[2]]))
+
+        # Add new datasets for hip if they don't exist yet
+        if "hip_position" not in self.logger.data_arrays:
+            self.logger.create_dataset("hip_position", 2)  # time, position
+            self.logger.create_dataset("hip_velocity", 2)  # time, velocity
+            self.logger.create_dataset("hip_torque", 2)    # time, torque
+        
+        # Get the sensor indices
+        hip_pos_sensor_idx = 3  # This index depends on the order in the sensor section
+        hip_vel_sensor_idx = 4  # This index depends on the order in the sensor section
+        
+        # Log hip joint data
+        hip_position = self.data.sensordata[hip_pos_sensor_idx]
+        hip_velocity = self.data.sensordata[hip_vel_sensor_idx]
+        hip_torque = self.data.qfrc_bias[hip_joint_id]  # Passive torque (gravity effects)
+        
+        self.logger.log_data("hip_position", np.array([time_value, 180/np.pi*hip_position]))
+        self.logger.log_data("hip_velocity", np.array([time_value, 180/np.pi*hip_velocity]))
+        self.logger.log_data("hip_torque", np.array([time_value, hip_torque]))
+
+        # Log RTD data - add this at the end
+        if hasattr(self.human_controller, 'current_rtd'):
+            self.logger.log_data("human_rtd", np.array([
+                self.data.time, 
+                self.human_controller.current_rtd, 
+                self.human_controller.current_rtd_limit
+            ]))
+        # Log RTD data for hip
+        if hasattr(self, 'hip_controller') and self.hip_controller is not None:
+            if hasattr(self.hip_controller, 'current_rtd'):
+                self.logger.log_data("hip_rtd", np.array([
+                    self.data.time, 
+                    self.hip_controller.current_rtd, 
+                    self.hip_controller.current_rtd_limit
+                ]))
+            else:
+                # If hip controller doesn't have RTD tracking, estimate it from torque changes
+                hip_torque_data = self.logger.get_dataset("hip_torque")
+                if hip_torque_data is not None and len(hip_torque_data) >= 2:
+                    # Get the last two data points
+                    if len(hip_torque_data) > 1:
+                        prev_time = hip_torque_data[-2][0]
+                        prev_torque = hip_torque_data[-2][1]
+                        current_time = hip_torque_data[-1][0]
+                        current_torque = hip_torque_data[-1][1]
+                        
+                        # Calculate rate of change
+                        time_diff = current_time - prev_time
+                        if time_diff > 0:  # Avoid division by zero
+                            rtd = (current_torque - prev_torque) / time_diff
+                            # Use a reasonable limit for visualization
+                            rtd_limit = 500.0  # Nm/s
+                            self.logger.log_data("hip_rtd", np.array([
+                                self.data.time, rtd, rtd_limit
+                            ]))
+        
+    def _simulation_step(self):
+        """Execute one step of the simulation."""
+        # Handle perturbation
+        if not perturbation_queue.empty():
+            x_perturbation = perturbation_queue.get()
+            self.data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
+        else:
+            self.data.xfrc_applied[2] = [0, 0, 0, 0., 0., 0.]
+
+        # MODIFIED: First compute control based on current state
+        # This ensures we're using the apply-then-step pattern like MATLAB
+        if self.config['controller_flag']:
+            self.controller(self.model, self.data)
+            
+        # Log perturbation before stepping
+        if not perturbation_queue.empty():
+            self.logger.log_data("perturbation", np.array([self.data.time, x_perturbation]))
+        else:
+            self.logger.log_data("perturbation", np.array([self.data.time, 0.]))
+
+        # Step physics (now using the torque we just computed)
+        mj.mj_step(self.model, self.data)
+        
+        # Log data after stepping
+        self._log_simulation_data()
+            
+    def _generate_plots(self):
+        """Generate plots from the collected data."""
+        print("Generating plots...")
+        
+        # Load data from logger to plotter
+        for name, data_array in self.logger.data_arrays.items():
+            # Skip the first empty row when passing to plotter
+            self.plotter.set_data(name, data_array[1:])
+        
+        # Generate dashboard plot
+        self.plotter.plot_dashboard(show=self.plot_flag, save=True)
+        
+        # Generate individual plots
+        self.plotter.plot_joint_state(show=self.plot_flag, save=True)
+        self.plotter.plot_torques(show=self.plot_flag, save=True)
+        self.plotter.plot_gravity_compensation(show=self.plot_flag, save=True)
+        
+        # If perturbations were applied, plot the response
+        perturbation_data = self.logger.get_dataset("perturbation")
+        if perturbation_data is not None and np.any(perturbation_data[:, 1] != 0):
+            self.plotter.plot_perturbation_response(show=self.plot_flag, save=True)
+            
+        print(f"Plots saved to: {os.path.join(self.logger.run_dir, 'plots')}")
+
+    def run(self):
+        """Run the simulation."""
+        simend = self.config['simend']
+
+        # Record initial state at t=0 before any physics steps
+        original_time = self.data.time  # Save current time
+        self.data.time = 0.0           # Explicitly set to t=0
+
+        if self.config['controller_flag']:
+            self.controller(self.model, self.data)
+        
+        # -- (2) Optionally do a forward pass so MuJoCo sees the new ctrl
+        mj.mj_forward(self.model, self.data)
+
+        self._log_simulation_data()    # Log initial state
+        self.data.time = original_time # Restore original time
+        
+        # # Apply initial control before any steps occur
+        # if self.config['controller_flag']:
+        #     self.controller(self.model, self.data)
+        
+        start_time = time.time()
+        
+        # Main simulation loop with visualization
+        if self.renderer:
+            while not self.renderer.window_should_close():
+                simstart = self.data.time
+                
+                # Run physics at a higher rate than rendering (60 fps)
+                while (self.data.time - simstart < 1.0/60.0):
+                    # Step physics and record data
+                    self._simulation_step()
+                    
+                    # Check if simulation time exceeded
+                    if self.data.time >= simend:
+                        break
+                
+                # Check if simulation time exceeded
+                if self.data.time >= simend:
+                    break
+                    
+                # Render the current state
+                self.renderer.render(self.model, self.data)
+        
+        # Without visualization - run the simulation faster
+        else:
+            while self.data.time < simend:
+                self._simulation_step()
+        
+        print(f"Simulation completed in {time.time() - start_time:.2f} seconds")
+        
+        # Clean up
+        if self.perturbation_thread:
+            self.perturbation.stop()
+            self.perturbation_thread.join()
+            print("Perturbation thread terminated")
+            
+        if self.renderer:
+            if self.mp4_flag:
+                self.renderer.save_video(
+                    self.config['mp4_file_name'], 
+                    self.config['mp4_fps']
+                )
+            self.renderer.close()
+        
+        # Save all collected data
+        self.logger.save_all()
+        
+        # Generate plots if enabled
+        if self.plot_flag:
+            self._generate_plots()
+
+
+if __name__ == "__main__":
+    simulation = AnkleExoSimulation('config.yaml')
+    simulation.initialize()
+    simulation.run()
