@@ -36,11 +36,7 @@ class AnkleExoSimulation:
         self.config_file = config_file
         self.params = self.load_params_from_yaml(config_file)
         self.config = self.params['config']
-        
-        # Always enable plotting and video recording
-        self.plot_flag = True
-        self.mp4_flag = True
-        
+
         # Controllers
         self.human_controller = None
         self.exo_controller = None
@@ -59,10 +55,6 @@ class AnkleExoSimulation:
         
         # Setpoints
         self.ankle_position_setpoint = self.config['ankle_position_setpoint_radians']
-        
-        # Perturbation
-        self.perturbation = None
-        self.perturbation_thread = None
 
     def load_params_from_yaml(self, file_path):
         """Load configuration from YAML file."""
@@ -119,8 +111,6 @@ class AnkleExoSimulation:
 
         # Prepare parameters for human controller
         human_params = {
-            'max_torque_df': human_config.get('max_torque_df', 43),  # Default if not in XML
-            'max_torque_pf': human_config.get('max_torque_pf', -181),  # Default if not in XML
             'mass': self.config['M_total'] - 2*0.0145*self.config['M_total'],
             'leg_length': 0.575 * self.config['H_total'],
             # Get MRTD parameters from main config section instead of human controller
@@ -190,7 +180,6 @@ class AnkleExoSimulation:
 
         # Prepare parameters for exo controller
         exo_params = {
-            'max_torque': exo_config.get('max_torque', 0)
         }
         
         # Add controller-specific parameters
@@ -255,8 +244,6 @@ class AnkleExoSimulation:
                 # Additionally, if not showing, move the geom far away to ensure no interactions
                 if not show_exoskeleton:
                     model.geom_pos[geom_id] = np.array([1000.0, 1000.0, 1000.0])
-                
-        print(f"Exoskeleton visibility set to: {show_exoskeleton}")
 
     def controller(self, model, data):
         """Controller function for the leg."""
@@ -279,11 +266,11 @@ class AnkleExoSimulation:
             target=self.ankle_position_setpoint
         )
         data.ctrl[1] = exo_torque
-    # Replace the initialize_model method in simulation.py:
+
     def initialize_model(self):
         """Initialize MuJoCo model and data."""
         # Get model parameters
-        xml_path = self.config['xml_path']
+        xml_path = 'initial_humanoid.xml'
         translation_friction_constant = self.config['translation_friction_constant']
         rolling_friction_constant = self.config['rolling_friction_constant']
         M_total = self.config['M_total']
@@ -322,7 +309,7 @@ class AnkleExoSimulation:
         
         # Rest of the method remains the same
         self.model.opt.timestep = self.config['simulation_timestep']
-        self.model.opt.gravity = np.array([0, 0, self.config['gravity']])
+        self.model.opt.gravity = np.array([0, 0, -9.81])
         
         # Set initial conditions
         self.data.qvel[0] = self.config['foot_rotation_initial_velocity']  # hinge joint at top of body
@@ -344,10 +331,6 @@ class AnkleExoSimulation:
         
         # Initialize controllers
         self.initialize_controllers(self.model, self.data)
-        
-        print(f"Initial ankle velocity: {self.data.qvel[3]}")
-        
-        print("Model initialized successfully")
   
     def initialize(self):
         """Initialize all simulation components."""
@@ -374,8 +357,7 @@ class AnkleExoSimulation:
         # Complete renderer setup with the model if visualization is enabled
         if self.visualization_flag:
             self.renderer.setup_visualization(self.model, self.config)
-            if self.mp4_flag:
-                self.renderer.start_recording()
+            self.renderer.start_recording()
         
         print(f"Simulation duration: {self.config['simend']} seconds")
 
@@ -485,15 +467,9 @@ class AnkleExoSimulation:
         print(f"Simulation completed in {time.time() - start_time:.2f} seconds")
             
         if self.renderer:
-            if self.mp4_flag:
-
-                video_filename = self.config['mp4_file_name']
-                video_path = os.path.join(self.data_handler.run_dir, video_filename)
-
-                self.renderer.save_video(
-                    video_path, 
-                    self.config['mp4_fps']
-                )
+            video_filename = 'simulation.mp4'
+            video_path = os.path.join(self.data_handler.run_dir, video_filename)
+            self.renderer.save_video(video_path, 60)  # 60 fps
             self.renderer.close()
         
         self.data_handler.finalize()

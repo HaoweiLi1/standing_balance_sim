@@ -1,18 +1,12 @@
-config:
-  
+config: 
   # Simulation parameters
   simend: 10                                           # set the duration for which the simulation will run
   simulation_timestep: 0.0005                          # set the simulation timestep - this attribute is critical to simulation success
   visualization_flag: True                             # Enable/disable MuJoCo 3D visualization
-  mp4_file_name: 'Simulation.mp4'                      # file name for mp4 file to be saved to
-  xml_path: 'initial_humanoid.xml'                     # set the file path that the run_sim.py script will read and modify with literature estimates
-  lit_xml_file: 'literature_humanoid.xml'              # set file path that run_sim.py will save literature estimate XML file too; this is loaded into the MuJoCo backend
-  visualize_center_of_mass: False                      # toggle on/off to visualize humanoid COM
   
   # Body parameters
   M_total: 60                                          # total mass of the human, used for literature estimate calculations
   H_total: 1.59                                        # total height of the human, used for literature estimate calculations
-  gravity: -9.81                                       # set gravity (my code takes this scalar and applies it along the z-axis)
   
   # Ankle joint parameters
   ankle_initial_position_radians: -0.03                  # set the initial ankle angle in radians 
@@ -60,11 +54,11 @@ config:
         kd: 10                                         # Derivative gain
 
   # Visualization settings
-  mp4_fps: 60                                          # video fps
   camera_azimuth: 87.5                                 # set camera azimuth 
   camera_distance: 3.                                  # set camera distance from worldbody origin
   camera_elevation: -5                                 # set camera elevation from worldbody origin; not sure why it's negative (pretend it is positive)
   camera_lookat_xyz: '0.012768, -0.000000, 1'          # configure the (x,y,z) coordinates that the camera looks at in simulation
+  visualize_center_of_mass: False                      # toggle on/off to visualize humanoid COM
   visualize_contact_force: False                       # toggle on / off to visualize contact forces
   visualize_joints: False                              # toggle on / off to visualize model joints
   visualize_actuators: False                           # toggle on / off to visualize model actuators
