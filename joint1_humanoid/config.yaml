@@ -15,11 +15,11 @@ config:
   gravity: -9.81                                       # set gravity (my code takes this scalar and applies it along the z-axis)
   
   # Ankle joint parameters
-  ankle_initial_position_radians: 0.1                  # set the initial ankle angle in radians 
-  ankle_initial_velocity: -0.05                        # set initial ankle velocity in rad/s
+  ankle_initial_position_radians: -0.03                  # set the initial ankle angle in radians 
+  ankle_initial_velocity: 0.3                        # set initial ankle velocity in rad/s
   ankle_position_setpoint_radians: 0.0                 # set the ankle joint setpoint in radians
   mrtd_df: 148                                         # Maximum rate of torque development for dorsiflexion (Nm/s)
-  mrtd_pf: -389                                        # Maximum rate of torque development for plantarflexion (Nm/s)
+  mrtd_pf: 389                                        # Maximum rate of torque development for plantarflexion (Nm/s)
   
   # Environment parameters
   foot_angle_initial_position_radians: 0               # set the initial angle of the foot
@@ -36,9 +36,9 @@ config:
       
       # LQR specific parameters
       lqr_params:
-        Q_angle: 3000                                  # State cost for angle
-        Q_velocity: 400                                # State cost for velocity
-        R: 0.1                                         # Control cost
+        Q_angle: 1000                                  # State cost for angle
+        Q_velocity: 4000                                # State cost for velocity
+        R: 1                                         # Control cost
       
       # PD specific parameters
       pd_params:
@@ -59,32 +59,6 @@ config:
         kp: 400                                        # Proportional gain
         kd: 10                                         # Derivative gain
 
-  # Updated perturbation configuration
-  apply_perturbation: False
-  perturbation_type: "impulse"                         # Options: "none", "impulse", "sinusoidal", "step", "random"
-  
-  # Impulse perturbation parameters
-  perturbation_magnitude: 100
-  perturbation_time: 0.3
-  perturbation_period: 3.25
-  perturbation_direction: null                         # null for random direction, 1 or -1 for fixed direction
-  
-  # Sinusoidal perturbation parameters
-  perturbation_amplitude: 50
-  perturbation_frequency: 0.5
-  perturbation_phase: 0
-  
-  # Step perturbation parameters
-  perturbation_start_time: 5.0
-  perturbation_duration: null                          # null for continuous until end
-  
-  # Random perturbation parameters
-  perturbation_max_magnitude: 100
-  perturbation_min_duration: 0.2
-  perturbation_max_duration: 1.0
-  perturbation_min_interval: 2.0
-  perturbation_max_interval: 5.0
-
   # Visualization settings
   mp4_fps: 60                                          # video fps
   camera_azimuth: 87.5                                 # set camera azimuth 
@@ -92,7 +66,6 @@ config:
   camera_elevation: -5                                 # set camera elevation from worldbody origin; not sure why it's negative (pretend it is positive)
   camera_lookat_xyz: '0.012768, -0.000000, 1'          # configure the (x,y,z) coordinates that the camera looks at in simulation
   visualize_contact_force: False                       # toggle on / off to visualize contact forces
-  visualize_perturbation_force: False                  # toggle on / off to visualize perturbation forces
   visualize_joints: False                              # toggle on / off to visualize model joints
   visualize_actuators: False                           # toggle on / off to visualize model actuators
 
