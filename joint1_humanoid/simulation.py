@@ -377,6 +377,7 @@ class AnkleExoSimulation:
         ankle_torque_executed = self.data.qfrc_actuator[self.ankle_joint_id]
         gravity_torque = self.data.qfrc_bias[self.ankle_joint_id]
         
+        
         # Log torque data - Note the change from ankle_torque to human_torque
         self.data_handler.log_data("human_torque", np.array([time_value, human_torque_executed]))
         self.data_handler.log_data("exo_torque", np.array([self.data.time, exo_torque_executed]))

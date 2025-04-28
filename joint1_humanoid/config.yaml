@@ -26,13 +26,13 @@ config:
   # Controller configuration
   controllers:
     human:
-      type: "LQR"                                      # Options: "LQR", "PD", "Precomputed"
+      type: "PD"                                      # Options: "LQR", "PD", "Precomputed"
       
       # LQR specific parameters
       lqr_params:
-        Q_angle: 1000                                  # State cost for angle
-        Q_velocity: 4000                                # State cost for velocity
-        R: 1                                         # Control cost
+        Q_angle: 3000                                  # State cost for angle
+        Q_velocity: 400                                # State cost for velocity
+        R: 0.01                                         # Control cost
       
       # PD specific parameters
       pd_params:
@@ -44,14 +44,13 @@ config:
         trajectory_file: "ankle_torque_trajectory.csv"
 
     exo:
-      type: "PD"                                       # Options: "PD", "None" 
-      max_torque: 50                                   # Maximum exo torque (Nm)
-      
+      type: "None"                                       # Options: "PD", "None" 
+ 
       # PD specific parameters
       pd_params:
-        use_dynamic_gains: true                        # New flag to indicate we want to use calculated gains
-        kp: 400                                        # Proportional gain
-        kd: 10                                         # Derivative gain
+        use_dynamic_gains: false                        # New flag to indicate we want to use calculated gains
+        kp: 800                                        # Proportional gain
+        kd: 100                                         # Derivative gain
 
   # Visualization settings
   camera_azimuth: 87.5                                 # set camera azimuth 

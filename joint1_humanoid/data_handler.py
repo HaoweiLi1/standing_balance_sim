@@ -177,7 +177,7 @@ class DataHandler:
         rtd_data = self.data_arrays["human_rtd"][1:]
         
         # Create figure with 4 subplots
-        fig, axs = plt.subplots(4, 1, figsize=(10, 12), sharex=True)
+        fig, axs = plt.subplots(4, 1, figsize=(24, 12), sharex=True)
         
         # Plot 1: Ankle angle
         axs[0].plot(pos_data[:, 0], pos_data[:, 1], 'b-', linewidth=1.5)
@@ -194,7 +194,7 @@ class DataHandler:
         # Plot 3: Torques
         axs[2].plot(human_torque_data[:, 0], human_torque_data[:, 1], 'r-', linewidth=1.5, label='Human Ankle Torque')
         axs[2].plot(exo_torque_data[:, 0], exo_torque_data[:, 1], 'b-', linewidth=1.5, label='Exo Torque')
-        axs[2].plot(gravity_torque_data[:, 0], gravity_torque_data[:, 1], 'g-', linewidth=1.5, label='Gravity Torque')
+        # axs[2].plot(gravity_torque_data[:, 0], gravity_torque_data[:, 1], 'g-', linewidth=1.5, label='Gravity Torque')
         axs[2].set_ylabel('Torque (Nm)')
         axs[2].set_title('Joint Torques vs Time')
         axs[2].legend()
@@ -202,12 +202,6 @@ class DataHandler:
         
         # Plot 4: RTD
         axs[3].plot(rtd_data[:, 0], rtd_data[:, 1], 'k-', linewidth=1.5)
-        
-        # Add horizontal lines for RTD limits if available
-        if rtd_data.shape[1] > 2 and np.any(rtd_data[:, 2] != 0):
-            limit_value = rtd_data[0, 2]  # Get the first limit value
-            axs[3].axhline(y=limit_value, color='r', linestyle='--', label='RTD Limit')
-            axs[3].axhline(y=-limit_value, color='r', linestyle='--')
         
         axs[3].set_xlabel('Time (s)')
         axs[3].set_ylabel('Rate of Torque Dev. (Nm/s)')

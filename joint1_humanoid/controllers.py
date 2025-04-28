@@ -387,7 +387,7 @@ class ExoNoneController(ExoController):
     
     def __init__(self, model, data):
         # Initialize with zero actual max torque
-        super().__init__(model, data, 0)
+        super().__init__(model, data)
         
     def compute_control(self, state, target):
         """Always return zero torque."""
