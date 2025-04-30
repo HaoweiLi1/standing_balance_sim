@@ -148,7 +148,7 @@ class DataHandler:
             force_data[:, 3:7] = constraint_data[:, 1:5]  # constraint forces
             
             # Create header with column names and units
-            header = "time(s),front_contact_force(N),back_contact_force(N),constraint_force_1(N),constraint_force_2(N),constraint_force_3(N),constraint_force_4(N)"
+            header = "time(s),front_contact_force(N),back_contact_force(N),foot_rotation_constraint(N),slide_x_constraint(N),slide_z_constraint(N),ankle_hinge_constraint(N)"
             
             # Save to CSV
             force_path = os.path.join(self.run_dir, "force.csv")
@@ -157,11 +157,11 @@ class DataHandler:
     
     def create_plots(self):
         """
-        Create a 4x1 plot with ankle angle, velocity, torques, and RTD.
+        Create a 3x1 plot with ankle angle, velocity, and torques (human and exo only).
         """
         # Check if required datasets exist
         required_datasets = ["joint_position", "joint_velocity", "human_torque", 
-                           "exo_torque", "gravity_torque", "human_rtd"]
+                           "exo_torque"]
         
         for name in required_datasets:
             if name not in self.data_arrays or len(self.data_arrays[name]) <= 1:
@@ -173,11 +173,9 @@ class DataHandler:
         vel_data = self.data_arrays["joint_velocity"][1:]
         human_torque_data = self.data_arrays["human_torque"][1:]
         exo_torque_data = self.data_arrays["exo_torque"][1:]
-        gravity_torque_data = self.data_arrays["gravity_torque"][1:]
-        rtd_data = self.data_arrays["human_rtd"][1:]
         
-        # Create figure with 4 subplots
-        fig, axs = plt.subplots(4, 1, figsize=(24, 12), sharex=True)
+        # Create figure with 3 subplots
+        fig, axs = plt.subplots(3, 1, figsize=(18, 9), sharex=True)
         
         # Plot 1: Ankle angle
         axs[0].plot(pos_data[:, 0], pos_data[:, 1], 'b-', linewidth=1.5)
@@ -191,22 +189,14 @@ class DataHandler:
         axs[1].set_title('Ankle Angular Velocity vs Time')
         axs[1].grid(True, linestyle='--', alpha=0.7)
         
-        # Plot 3: Torques
+        # Plot 3: Torques (human and exo only)
         axs[2].plot(human_torque_data[:, 0], human_torque_data[:, 1], 'r-', linewidth=1.5, label='Human Ankle Torque')
         axs[2].plot(exo_torque_data[:, 0], exo_torque_data[:, 1], 'b-', linewidth=1.5, label='Exo Torque')
-        # axs[2].plot(gravity_torque_data[:, 0], gravity_torque_data[:, 1], 'g-', linewidth=1.5, label='Gravity Torque')
         axs[2].set_ylabel('Torque (Nm)')
         axs[2].set_title('Joint Torques vs Time')
         axs[2].legend()
         axs[2].grid(True, linestyle='--', alpha=0.7)
-        
-        # Plot 4: RTD
-        axs[3].plot(rtd_data[:, 0], rtd_data[:, 1], 'k-', linewidth=1.5)
-        
-        axs[3].set_xlabel('Time (s)')
-        axs[3].set_ylabel('Rate of Torque Dev. (Nm/s)')
-        axs[3].set_title('Ankle Rate of Torque Development vs Time')
-        axs[3].grid(True, linestyle='--', alpha=0.7)
+        axs[2].set_xlabel('Time (s)')
         
         # Adjust layout and save
         plt.tight_layout()
