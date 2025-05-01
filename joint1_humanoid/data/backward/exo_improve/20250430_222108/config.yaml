@@ -9,8 +9,8 @@ config:
   H_total: 1.59                                        # total height of the human, used for literature estimate calculations
   
   # Ankle joint parameters
-  ankle_initial_position_radians: 0.01                  # set the initial ankle angle in radians 
-  ankle_initial_velocity: -0.143                        # set initial ankle velocity in rad/s
+  ankle_initial_position_radians: 0.10                  # set the initial ankle angle in radians 
+  ankle_initial_velocity: -0.02                        # set initial ankle velocity in rad/s
   ankle_position_setpoint_radians: 0.00                 # set the ankle joint setpoint in radians
   mrtd_df: 148                                         # Maximum rate of torque development for dorsiflexion (Nm/s)
   mrtd_pf: 389                                        # Maximum rate of torque development for plantarflexion (Nm/s)
@@ -44,7 +44,7 @@ config:
         trajectory_file: "ankle_torque_trajectory.csv"
 
     exo:
-      type: "PD"                                       # Options: "PD", "None" 
+      type: "None"                                       # Options: "PD", "None" 
       
       # PD specific parameters
       pd_params:

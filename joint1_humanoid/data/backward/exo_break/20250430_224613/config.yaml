@@ -44,7 +44,7 @@ config:
         trajectory_file: "ankle_torque_trajectory.csv"
 
     exo:
-      type: "PD"                                       # Options: "PD", "None" 
+      type: "None"                                       # Options: "PD", "None" 
       
       # PD specific parameters
       pd_params:
