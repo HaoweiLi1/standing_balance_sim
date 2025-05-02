@@ -24,14 +24,14 @@ theta_target = 0.0;             % Target ankle angle (rad)
 
 % Simulation parameters
 % FIXED: Reduced time resolution to make the problem more tractable
-dt = 0.0005;                      % Time step (s) - increased from 0.0005
-T_sim = 5;                      % Simulation duration (s)
+dt = 0.002;                      % Time step (s) - increased from 0.0005
+T_sim = 6;                      % Simulation duration (s)
 N = round(T_sim/dt) + 1;        % Number of time steps
 
 % Foot geometry and friction parameters
 l_heel = 0.05 * H_total;        % Distance from ankle to heel (m)
 l_toe = 0.15 * H_total;         % Distance from ankle to toe (m)
-mu = 0.8;                       % Friction coefficient
+mu = 0.99;                       % Friction coefficient
 
 %% Setup for Direct Collocation Optimal Control
 % Based on the "Discretized Optimal Trajectory" tutorial
@@ -183,6 +183,8 @@ else
 end
 
 %% Compute Derived Quantities
+% Calculate the gravity torque
+gravity_torque = m_body * g * l_COM * sin(theta_sol);
 % FIXED: Ensure arrays are properly aligned for export
 fprintf('Checking dimensions before export:\n');
 fprintf('Size of t: %d x %d\n', size(t, 1), size(t, 2));
