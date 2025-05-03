@@ -24,7 +24,7 @@ theta_target = 0.0;             % Target ankle angle (rad)
 
 % Simulation parameters
 % FIXED: Reduced time resolution to make the problem more tractable
-dt = 0.002;                      % Time step (s) - increased from 0.0005
+dt = 0.0025;                      % Time step (s) - increased from 0.0005
 T_sim = 6;                      % Simulation duration (s)
 N = round(T_sim/dt) + 1;        % Number of time steps
 
