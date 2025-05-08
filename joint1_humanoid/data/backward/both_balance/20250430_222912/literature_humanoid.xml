@@ -83,8 +83,8 @@
             
             
               <joint type="hinge" name="ankle_hinge" axis="0 1 0" damping="2.5" pos="0 0 0" />
-              <geom name="long_link_geom" class="long_link" solref="0.015 1" solimp=".99 .99 .001" mass="0" fromto="0 0 0.795 0 0 0" />
-              <geom name="m_body" type="sphere" size="0.05" mass="5.8260000000000005" pos="0 0 0.35775" />
+              <geom name="long_link_geom" class="long_link" solref="0.015 1" solimp=".99 .99 .001" mass="0" fromto="0 0 1.59 0 0 0" />
+              <geom name="m_body" type="sphere" size="0.05" mass="58.26" pos="0 0 0.91425" />
 
               
               
@@ -109,12 +109,6 @@
               
               <geom name="exo_calf_strap_top" type="capsule" fromto="0.03 -0.02 0.08 0.03 0.02 0.08" size="0.008" material="exo_straps" contype="0" conaffinity="0" />
             
-              <body name="upper_body" pos="0 0 0.795">
-                  <joint type="hinge" name="hip_hinge" axis="0 1 0" damping="2.5" pos="0 0 0" />
-                  <geom name="upper_body_geom" type="capsule" fromto="0 0 0 0 0 0.795" size="0.025" solref="0.015 1" solimp=".99 .99 .001" />
-                  <geom name="upper_body_com" type="sphere" size="0.05" pos="0 0 0.3975" mass="34.955999999999996" />
-              </body>
-
             </body>
 
         </body>
@@ -127,9 +121,8 @@
 
     
 	<actuator>
-      <motor joint="ankle_hinge" name="human_ankle_actuator" gear="1" ctrlrange="-150 150" ctrllimited="true" /> 
+      <motor joint="ankle_hinge" name="human_ankle_actuator" gear="1" ctrlrange="-88 22" ctrllimited="true" /> 
       <motor joint="ankle_hinge" name="exo_ankle_actuator" gear="1" ctrlrange="-50 50" ctrllimited="true" />
-      <motor joint="hip_hinge" name="hip_actuator" gear="1" ctrlrange="-150 150" ctrllimited="true" />
 	</actuator>
 
     
@@ -137,9 +130,6 @@
       <jointpos joint="ankle_hinge" />
       <touch site="front_foot_site" />
       <touch site="back_foot_site" />
-      <jointpos joint="hip_hinge" />
-      <jointvel joint="hip_hinge" />
-      <actuatorfrc actuator="hip_actuator" />
 	</sensor>
 
 </mujoco>
