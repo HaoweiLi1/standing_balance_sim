@@ -9,9 +9,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import time
-from queue import Queue
 import xml.etree.ElementTree as ET
 import yaml
+from queue import Queue
 
 
 from xml_utilities import calculate_kp_and_geom, set_geometry_params
@@ -20,17 +20,14 @@ from renderer import MujocoRenderer
 from data_logger import DataLogger
 from data_plotter import DataPlotter
 from controllers import create_human_controller, create_exo_controller, create_hip_controller
-from perturbation import create_perturbation
 
 
 plt.rcParams['text.usetex'] = True
 
 mpl.rcParams.update(mpl.rcParamsDefault)
 
-perturbation_queue = Queue()
 control_log_queue = Queue()
 counter_queue = Queue()
-perturbation_datalogger_queue = Queue()
 
 class AnkleExoSimulation:
     """
@@ -79,9 +76,6 @@ class AnkleExoSimulation:
         self.ankle_position_setpoint = self.config['ankle_position_setpoint_radians']
         self.hip_position_setpoint = self.config.get('hip_position_setpoint_radians', 0.0) 
         
-        # Perturbation
-        self.perturbation = None
-        self.perturbation_thread = None
 
     def load_params_from_yaml(self, file_path):
         """Load configuration from YAML file."""
@@ -475,16 +469,6 @@ class AnkleExoSimulation:
             self.renderer.start_recording()
             
         print("Renderer initialized successfully")
-
-    def initialize_perturbation(self):
-        """Initialize perturbation if enabled."""
-        if not self.config['apply_perturbation']:
-            print("Perturbation disabled")
-            return
-            
-        self.perturbation = create_perturbation(self.config)
-        self.perturbation_thread = self.perturbation.start(perturbation_queue)
-        print(f"Perturbation initialized: {type(self.perturbation).__name__}")
         
     def initialize(self):
         """Initialize all simulation components."""
@@ -505,7 +489,6 @@ class AnkleExoSimulation:
         self.data.time = original_time
 
         self.initialize_renderer()
-        self.initialize_perturbation()
         
         print(f"Simulation duration: {self.config['simend']} seconds")
         
@@ -616,23 +599,10 @@ class AnkleExoSimulation:
         
     def _simulation_step(self):
         """Execute one step of the simulation."""
-        # Handle perturbation
-        if not perturbation_queue.empty():
-            x_perturbation = perturbation_queue.get()
-            self.data.xfrc_applied[2] = [x_perturbation, 0, 0, 0., 0., 0.]
-        else:
-            self.data.xfrc_applied[2] = [0, 0, 0, 0., 0., 0.]
-
         # MODIFIED: First compute control based on current state
         # This ensures we're using the apply-then-step pattern like MATLAB
         if self.config['controller_flag']:
             self.controller(self.model, self.data)
-            
-        # Log perturbation before stepping
-        if not perturbation_queue.empty():
-            self.logger.log_data("perturbation", np.array([self.data.time, x_perturbation]))
-        else:
-            self.logger.log_data("perturbation", np.array([self.data.time, 0.]))
 
         # Step physics (now using the torque we just computed)
         mj.mj_step(self.model, self.data)
@@ -681,10 +651,6 @@ class AnkleExoSimulation:
         self._log_simulation_data()    # Log initial state
         self.data.time = original_time # Restore original time
         
-        # # Apply initial control before any steps occur
-        # if self.config['controller_flag']:
-        #     self.controller(self.model, self.data)
-        
         start_time = time.time()
         
         # Main simulation loop with visualization
@@ -715,12 +681,6 @@ class AnkleExoSimulation:
         
         print(f"Simulation completed in {time.time() - start_time:.2f} seconds")
         
-        # Clean up
-        if self.perturbation_thread:
-            self.perturbation.stop()
-            self.perturbation_thread.join()
-            print("Perturbation thread terminated")
-            
         if self.renderer:
             if self.mp4_flag:
                 self.renderer.save_video(
