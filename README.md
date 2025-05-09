@@ -1,14 +1,28 @@
 # MuJoCo Human Standing Balance Simulation - Ozay Lab @ University of Michigan
 
-This repository provides platform for simulating human standing balance models in MuJoCo, ranging from simple two-link inverted pendulum models to advanced multi-joint models with exoskeleton assistance. The models allow for studying stabilizable regions of state space and optimizing control strategies for human-exoskeleton systems.
+This repository provides a comprehensive platform for simulating human standing balance models in MuJoCo. The simulation framework ranges from simple single-joint inverted pendulum models to advanced multi-joint models with exoskeleton assistance. The models enable researchers to study stabilizable regions of state space, optimize control strategies for human-exoskeleton systems, and investigate various balance perturbation scenarios.
 
 ![humanoid_model](humanoid_model.jpg) \
-**Figure 1.** MuJoCo Two-link Standing Balance Model (left) w/ contact forces shown in red; Theoretical Two-link Model (right).
-
+**Figure 1.** MuJoCo Two-link Standing Balance Model (left) with contact forces shown in red; Theoretical Two-link Model (right).
 
 ## Libraries to Install
 
+To run the simulation framework, you'll need to install the following libraries:
 
+```bash
+# Core dependencies
+pip install numpy scipy matplotlib pyyaml
+
+# MuJoCo dependencies
+pip install mujoco
+
+# Visualization and video recording
+pip install imageio imageio-ffmpeg opencv-python
+```
+
+For MATLAB optimization components (optional, joint1_humanoid only):
+- MATLAB with Optimization Toolbox
+- MATLAB's Global Optimization Toolbox (recommended)
 
 ## Repository Structure
 
@@ -27,10 +41,35 @@ Each directory contains:
 
 ## How to use the Configuration file
 
+The `config.yaml` file in each model directory controls all aspects of the simulation:
 
+```yaml
+config:
+  # Simulation parameters
+  simend: 6                      # Duration in seconds
+  simulation_timestep: 0.0005    # Physics timestep
+  visualization_flag: True       # Enable 3D visualization
+  
+  # Body parameters
+  M_total: 60                    # Total mass (kg)
+  H_total: 1.59                  # Total height (m)
+  
+  # Joint parameters
+  ankle_initial_position_radians: -0.03    # Initial ankle angle
+  ankle_initial_velocity: 0.3             # Initial ankle velocity
+  ankle_position_setpoint_radians: 0.00   # Target angle
+  
+  # Controller settings
+  controllers:
+    human:
+      type: "PD"                 # Controller type (LQR, PD, Precomputed)
+      # Controller-specific parameters follow...
+```
 
-
-
+To modify simulation behavior:
+1. Edit the `config.yaml` file in the model directory
+2. Adjust parameters as needed for your experiment
+3. Save the file and run the simulation
 
 ## Simulation Models
 
@@ -108,7 +147,6 @@ Each simulation uses a modular controller architecture:
 
 Controllers can be toggled in the `config.yaml` file by setting appropriate controller types and parameters.
 
-
 ### Run Method
 
 The simulation's main execution method handles:
@@ -119,9 +157,60 @@ The simulation's main execution method handles:
 4. Running the simulation loop with perturbations and data collection
 5. Saving results and generating visualizations
 
-## Experiments Results
-https://www.notion.so/MuJoCo-Simulation-1df7d0facf8a800cabb1cf42b29149c1
-https://docs.google.com/presentation/d/1VR8CqYIliBoyK5xkXzbccSOwzxNYH7VUIWC2zvRn12Y/edit?slide=id.p1#slide=id.p1
+## Simulation Results
+
+The simulation framework produces comprehensive results for each run, organized in timestamped directories within each model's `data` folder.
+
+### joint1_humanoid Results
+
+The single-joint model results are organized by perturbation direction (forward/backward) and experimental scenario:
+
+```
+joint1_humanoid/data/
+├── backward/                  # Backward perturbation direction
+│   ├── both_balance/          # Both human and exo controllers maintain balance
+│   ├── both_unbalance/        # Neither controller alone can stabilize
+│   ├── exo_break/             # Exo destabilizes an otherwise stable system
+│   └── exo_improve/           # Exo assists an otherwise unstable system
+└── forward/                   # Forward perturbation direction
+    ├── both_balance/
+    ├── both_unbalance/
+    ├── exo_break/
+    └── exo_improve/
+```
+
+Each simulation run produces:
+- `ankle_plots.png`: Time series plots of ankle angle, velocity, and torques
+- `simulation.mp4`: Video recording of the simulation
+- `state.csv`, `torque.csv`, `force.csv`: Raw data for analysis
+- `config.yaml`: Copy of the configuration used for the run
+
+### joint2_humanoid Results
+
+The two-joint model results include both ankle and hip joint data:
+
+```
+joint2_humanoid/data/
+└── balance/                  # Balance experiment
+    ├── ankle_plots.png       # Ankle joint time series plots
+    ├── hip_plots.png         # Hip joint time series plots
+    ├── ankle_state.csv       # Ankle joint state data
+    ├── hip_state.csv         # Hip joint state data
+    ├── ankle_torque.csv      # Ankle torques (human, exo, gravity)
+    ├── hip_torque.csv        # Hip torques
+    ├── force.csv             # Contact and constraint forces
+    └── simulation.mp4        # Video recording of the simulation
+```
+
+The visualization plots show:
+1. Joint angles over time
+2. Joint velocities over time
+3. Applied torques (human, exoskeleton, gravity)
+4. Rate of torque development (RTD)
+
+For more detailed experimental results and analysis, please refer to:
+- [MuJoCo Simulation Documentation](https://www.notion.so/MuJoCo-Simulation-1df7d0facf8a800cabb1cf42b29149c1)
+- [Presentation of Results](https://docs.google.com/presentation/d/1VR8CqYIliBoyK5xkXzbccSOwzxNYH7VUIWC2zvRn12Y/edit?slide=id.p1#slide=id.p1)
 
 
 
